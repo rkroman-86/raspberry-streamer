@@ -139,8 +139,20 @@ end
 # ---------------------------------------------------------------
 # Lecture webradio (le Pi decode, l'ESP ne fait que commander)
 # ---------------------------------------------------------------
+var last_play_url = ""
+var last_play_ms = 0
+
 def play_radio(name, url)
   if url == ""  return  end
+  # anti-doublon : meme URL demandee 2 fois en moins de 1,5 s (rebond tactile,
+  # double evenement) -> un seul PLAY, sinon le Pi relance le flux 2 fois
+  var now = tasmota.millis()
+  if url == last_play_url && now - last_play_ms < 1500
+    print("play ignored (duplicate) " + url)
+    return
+  end
+  last_play_url = url
+  last_play_ms = now
   pi("PLAY " + url)
   var skc = global.show_known_cover        # defini plus bas
   if skc != nil  skc(url)  end
