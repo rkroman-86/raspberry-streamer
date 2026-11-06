@@ -389,6 +389,39 @@ function renderBand(id, title, slots, { numbered = false, empty = '', trailing =
   });
   band.appendChild(strip);
   strip.scrollLeft = keepScroll;
+  mouseScroll(strip);
+}
+
+/** À la souris (PC, bureau à distance) : glisser la bande et molette = défilement horizontal.
+ *  Au doigt, le défilement natif du navigateur suffit. */
+function mouseScroll(strip) {
+  let x0 = 0, left0 = 0, down = false, moved = false;
+  strip.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    down = true; moved = false; x0 = e.clientX; left0 = strip.scrollLeft;
+  });
+  strip.addEventListener('pointermove', e => {
+    if (!down) return;
+    const dx = e.clientX - x0;
+    if (!moved && Math.abs(dx) > 5) {
+      moved = true;
+      strip.setPointerCapture(e.pointerId);
+      strip.style.cursor = 'grabbing';
+    }
+    if (moved) strip.scrollLeft = left0 - dx;
+  });
+  const up = () => { down = false; strip.style.cursor = ''; };
+  strip.addEventListener('pointerup', up);
+  strip.addEventListener('pointercancel', up);
+  // la bande a été tirée : le relâchement ne doit pas lancer une station
+  strip.addEventListener('click', e => { if (moved) { e.stopImmediatePropagation(); e.preventDefault(); moved = false; } }, true);
+  strip.addEventListener('wheel', e => {
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+    const max = strip.scrollWidth - strip.clientWidth;
+    if (max <= 0) return;
+    e.preventDefault();
+    strip.scrollLeft += e.deltaY;
+  }, { passive: false });
 }
 
 function localInfo() {
