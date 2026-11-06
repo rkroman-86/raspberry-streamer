@@ -9,7 +9,7 @@ Usage (from the repo root):
   python tools/tasmota_sync.py push --all      # upload everything
   python tools/tasmota_sync.py ls [--all]      # list files on the device
   python tools/tasmota_sync.py cmd "Status 0"  # run a Tasmota command, print JSON
-  python tools/tasmota_sync.py log             # print the device console log
+  python tools/tasmota_sync.py log [-f]        # print the device console log (-f: follow)
   python tools/tasmota_sync.py rm /A/old.png   # delete a file on the device
 
 Device address: --host, or env TASMOTA_HOST, default 192.168.1.75
@@ -69,10 +69,18 @@ class Device:
         except ValueError:
             return raw
 
-    def log(self):
-        raw = self._req("/cs?c2=0").decode("utf-8", "replace")
+    def log(self, index=0):
+        """Console log since index. Returns (next_index, text).
+        Reply format: "<next_index>}1<reset_flag>}1<lines>}1"."""
+        raw = self._req("/cs?c2=%d" % index).decode("utf-8", "replace")
         parts = raw.split("}1")
-        return parts[-1] if parts else raw
+        if len(parts) < 3:
+            return index, raw
+        try:
+            nxt = int(parts[0])
+        except ValueError:
+            nxt = index
+        return nxt, parts[2]
 
     # --- filesystem -----------------------------------------------------
     _ROW = re.compile(r"<pre[^>]*><a href='ufsd\?download=([^']+)' file='[^']*'>[^<]*</a>(.*?)</pre>", re.S)
@@ -208,7 +216,8 @@ def main():
     l.add_argument("--all", action="store_true", help="include ignored files")
     c = sub.add_parser("cmd")
     c.add_argument("command")
-    sub.add_parser("log")
+    lg = sub.add_parser("log")
+    lg.add_argument("-f", "--follow", action="store_true", help="keep printing new lines (Ctrl+C to stop)")
     r = sub.add_parser("rm")
     r.add_argument("path")
     a = ap.parse_args()
@@ -225,7 +234,15 @@ def main():
         res = dev.cmd(a.command)
         print(json.dumps(res, indent=1, ensure_ascii=False) if not isinstance(res, str) else res)
     elif a.action == "log":
-        print(dev.log())
+        idx, text = dev.log(0)
+        if text:
+            print(text)
+        while a.follow:
+            time.sleep(1)
+            nidx, text = dev.log(idx)
+            if text and nidx != idx:
+                print(text)
+            idx = nidx
     elif a.action == "rm":
         dev.delete(a.path)
         print("deleted", a.path)
@@ -234,5 +251,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except KeyboardInterrupt:
+        pass
     except urllib.error.URLError as e:
         sys.exit("device error: %s" % e)
