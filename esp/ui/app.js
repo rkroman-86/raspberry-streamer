@@ -394,7 +394,8 @@ function renderBand(id, title, slots, { numbered = false, empty = '', trailing =
 
 /** À la souris (PC, bureau à distance) : glisser la bande et molette = défilement horizontal.
  *  Au doigt, le défilement natif du navigateur suffit. */
-function mouseScroll(strip) {
+function mouseScroll(strip, step = 0) {
+  // step > 0 : bande aimantée (cadran du tuner) ; aimant coupé pendant le glisser, une graduation par cran de molette
   let x0 = 0, left0 = 0, down = false, moved = false;
   strip.addEventListener('pointerdown', e => {
     if (e.pointerType !== 'mouse' || e.button !== 0) return;
@@ -407,10 +408,19 @@ function mouseScroll(strip) {
       moved = true;
       strip.setPointerCapture(e.pointerId);
       strip.style.cursor = 'grabbing';
+      if (step) strip.style.scrollSnapType = 'none';
     }
     if (moved) strip.scrollLeft = left0 - dx;
   });
-  const up = () => { down = false; strip.style.cursor = ''; };
+  const up = () => {
+    down = false;
+    strip.style.cursor = '';
+    if (step && moved) {                      // l'aimant revient : la graduation la plus proche se cale sous l'aiguille
+      const left = Math.round(strip.scrollLeft / step) * step;
+      strip.style.scrollSnapType = '';
+      strip.scrollTo({ left, behavior: 'smooth' });
+    }
+  };
   strip.addEventListener('pointerup', up);
   strip.addEventListener('pointercancel', up);
   // la bande a été tirée : le relâchement ne doit pas lancer une station
@@ -420,7 +430,8 @@ function mouseScroll(strip) {
     const max = strip.scrollWidth - strip.clientWidth;
     if (max <= 0) return;
     e.preventDefault();
-    strip.scrollLeft += e.deltaY;
+    if (step) strip.scrollBy({ left: Math.sign(e.deltaY) * step, behavior: 'smooth' });
+    else strip.scrollLeft += e.deltaY;
   }, { passive: false });
 }
 
@@ -927,6 +938,7 @@ function makeDial(label) {
         }, 160);
       }, { passive: true });
       dial.appendChild(strip);
+      mouseScroll(strip, 132);   // largeur d'une graduation (.dial-item)
       requestAnimationFrame(() => scrollTo(selected, false));
     }
     dial.appendChild(h('div', 'dial-needle'));
