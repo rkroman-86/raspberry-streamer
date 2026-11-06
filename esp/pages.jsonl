@@ -1,0 +1,50 @@
+{"page": 0, "comment": "Toujours visible : ligne du haut + volume + fenetre des sources (portrait 240x320)"}
+{"page": 0, "id": 0, "swipe":0, "dimming_time": 1, "dimming_min": 15, "dimming_duration": 30}
+{"id": 1, "obj": "btn", "x": 0, "y": 0, "w": 80, "h": 80, "radius": 8, "bg_color": "#1E1E1E", "border_width": 2, "border_color": "#333333", "text": "", "text_font": "montserrat-28", "text_color": "#555555"}
+{"id": 3, "obj": "btn", "x": 160, "y": 0, "w": 80, "h": 80, "radius": 12, "bg_opa": 0, "border_width": 0, "text": ""}
+{"id": 4, "obj": "img", "x": 160, "y": 0, "src": "A/src_webradio.png"}
+{"id": 5, "obj": "slider", "x": 14, "y": 298, "w": 214, "h": 12, "min": 0, "max": 100, "val": 0, "bg_color": "#333333", "bg_opa": 255, "bg_color10": "#00C853", "bg_grad_color10": "#FF1744", "bg_grad_dir10": 2, "bg_color20": "#FFFFFF"}
+{"id": 7, "obj": "img", "x": -10, "y": 70, "w": 200, "h": 200, "scale": 230, "src": "A/nowifi.png", "hidden": true}
+{"id": 19, "obj": "obj", "x": 0, "y": 0, "w": 240, "h": 320, "radius": 0, "pad_all": 0, "border_width": 0, "bg_color": "#000000", "bg_opa": 255, "hidden": true}
+{"id": 20, "obj": "obj", "parentid": 19, "x": 0, "y": 62, "w": 240, "h": 196, "radius": 10, "pad_all": 0, "border_width": 0, "bg_color": "#262626"}
+//{"id": 21, "obj": "label", "parentid": 20, "x": 10, "y": 8, "w": 150, "h": 24, "text": "Sources", "text_color": "#FFFFFF"}
+{"id": 22, "obj": "btn", "parentid": 20, "x": 194, "y": 2, "w": 40, "h": 34, "radius": 6, "bg_color": "#262626", "border_width": 0, "text": "", "text_color": "#FFFFFF"}
+{"id": 31, "obj": "btn", "parentid": 20, "x": 6, "y": 40, "w": 72, "h": 72, "radius": 12, "bg_opa": 255, "border_width": 0, "text": "", "bg_color": "#262626"}
+{"id": 41, "obj": "img", "parentid": 20, "x": 2, "y": 36, "w": 80, "h": 80, "scale": 205, "src": "A/src_webradio.png"}
+{"id": 32, "obj": "btn", "parentid": 20, "x": 84, "y": 40, "w": 72, "h": 72, "radius": 12, "bg_opa": 255, "border_width": 0, "text": "", "bg_color": "#262626"}
+{"id": 42, "obj": "img", "parentid": 20, "x": 80, "y": 36, "w": 80, "h": 80, "scale": 205, "src": "A/src_spotify.png"}
+{"id": 33, "obj": "btn", "parentid": 20, "x": 162, "y": 40, "w": 72, "h": 72, "radius": 12, "bg_opa": 255, "border_width": 0, "text": "", "bg_color": "#262626"}
+{"id": 43, "obj": "img", "parentid": 20, "x": 158, "y": 36, "w": 80, "h": 80, "scale": 205, "src": "A/src_airplay.png"}
+{"id": 34, "obj": "btn", "parentid": 20, "x": 6, "y": 118, "w": 72, "h": 72, "radius": 12, "bg_opa": 255, "border_width": 0, "text": "", "bg_color": "#262626"}
+{"id": 44, "obj": "img", "parentid": 20, "x": 2, "y": 114, "w": 80, "h": 80, "scale": 205, "src": "A/src_dlna.png"}
+{"id": 35, "obj": "btn", "parentid": 20, "x": 84, "y": 118, "w": 72, "h": 72, "radius": 12, "bg_opa": 255, "border_width": 0, "text": "", "bg_color": "#262626"}
+{"id": 45, "obj": "img", "parentid": 20, "x": 80, "y": 114, "w": 80, "h": 80, "scale": 205, "src": "A/src_bluetooth.png"}
+{"id": 36, "obj": "btn", "parentid": 20, "x": 162, "y": 118, "w": 72, "h": 72, "radius": 12, "bg_opa": 255, "border_width": 0, "text": "", "bg_color": "#262626"}
+{"id": 46, "obj": "img", "parentid": 20, "x": 174, "y": 130, "src": "A/src_settings.png"}
+{"page": 1, "swipe":0, "comment": "Webradio : pochette 180 + 3 dernieres stations", "bg_color": "#000000"}
+{"id": 2, "obj": "img", "x": -10, "y": 70, "w": 200, "h": 200, "scale": 230, "src": "A/cover_default.png"}
+{"id": 6, "obj": "obj", "x": 0, "y": 80, "w": 180, "h": 180, "radius": 0, "bg_opa": 0, "border_width": 2, "border_color": "#333333"}
+{"id": 51, "obj": "img", "x": 110, "y": 10, "w": 200, "h": 200, "hidden": true}
+{"id": 52, "obj": "img", "x": 110, "y": 70, "w": 200, "h": 200, "hidden": true}
+{"id": 53, "obj": "img", "x": 110, "y": 130, "w": 200, "h": 200, "hidden": true}
+{"id": 61, "obj": "btn", "x": 180, "y": 80, "w": 60, "h": 60, "radius": 0, "bg_opa": 0, "border_width": 2, "border_color": "#333333", "text": "", "hidden": true}
+{"id": 62, "obj": "btn", "x": 180, "y": 140, "w": 60, "h": 60, "radius": 0, "bg_opa": 0, "border_width": 2, "border_color": "#333333", "text": "", "hidden": true}
+{"id": 63, "obj": "btn", "x": 180, "y": 200, "w": 60, "h": 60, "radius": 0, "bg_opa": 0, "border_width": 2, "border_color": "#333333", "text": "", "hidden": true}
+{"id": 10, "obj": "label", "x": 0, "y": 266, "w": 240, "h": 20, "text": "", "text_color": "#FFFFFF", "align": "center"}
+{"page": 2, "swipe":0, "comment": "Bluetooth : icone + nom de l'appareil dans la case, artiste - titre dessous", "bg_color": "#000000"}
+{"id": 6, "obj": "obj", "x": 0, "y": 80, "w": 180, "h": 180, "radius": 0, "bg_opa": 0, "border_width": 2, "border_color": "#333333"}
+{"id": 2, "obj": "img", "x": 50, "y": 130, "src": "A/src_bluetooth.png"}
+{"id": 11, "obj": "label", "x": 0, "y": 222, "w": 180, "h": 20, "text": "", "text_color": "#9E9E9E", "align": "center"}
+{"id": 10, "obj": "label", "x": 0, "y": 266, "w": 240, "h": 20, "text": "Bluetooth", "text_color": "#FFFFFF", "align": "center"}
+{"page": 3, "swipe":0, "comment": "AirPlay : pochette comme la webradio + artiste - titre", "bg_color": "#000000"}
+{"id": 2, "obj": "img", "x": -10, "y": 70, "w": 200, "h": 200, "scale": 230, "src": "A/cover_default.png"}
+{"id": 6, "obj": "obj", "x": 0, "y": 80, "w": 180, "h": 180, "radius": 0, "bg_opa": 0, "border_width": 2, "border_color": "#333333"}
+{"id": 10, "obj": "label", "x": 0, "y": 266, "w": 240, "h": 20, "text": "", "text_color": "#FFFFFF", "align": "center"}
+{"page": 4, "swipe":0, "comment": "Spotify : pochette comme la webradio + artiste - titre", "bg_color": "#000000"}
+{"id": 2, "obj": "img", "x": -10, "y": 70, "w": 200, "h": 200, "scale": 230, "src": "A/cover_default.png"}
+{"id": 6, "obj": "obj", "x": 0, "y": 80, "w": 180, "h": 180, "radius": 0, "bg_opa": 0, "border_width": 2, "border_color": "#333333"}
+{"id": 10, "obj": "label", "x": 0, "y": 266, "w": 240, "h": 20, "text": "", "text_color": "#FFFFFF", "align": "center"}
+{"page": 5, "swipe":0, "comment": "DLNA : reservee (navigation serveurs plus tard)", "bg_color": "#000000"}
+{"id": 6, "obj": "obj", "x": 0, "y": 80, "w": 180, "h": 180, "radius": 0, "bg_opa": 0, "border_width": 2, "border_color": "#333333"}
+{"id": 2, "obj": "img", "x": 50, "y": 130, "src": "A/src_dlna.png"}
+{"id": 10, "obj": "label", "x": 0, "y": 266, "w": 240, "h": 20, "text": "DLNA", "text_color": "#FFFFFF", "align": "center"}

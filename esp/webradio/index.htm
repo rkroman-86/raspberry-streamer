@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="stylesheet" href="webradio/style.css">
+  <script src="webradio/app.js" defer></script>
+</head>
+<body>
+  <div id="nowPlaying">
+     <div id="npStation" class="np-line np-station">
+       <span class="np-label">Station :</span>
+       <span class="np-marquee"><span class="np-text">(aucune)</span></span>
+     </div>
+     <div id="npTrack" class="np-line np-track">
+       <span class="np-label">Titre :</span>
+       <span class="np-marquee"><span class="np-text">(chargement...)</span></span>
+     </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="vol-row">
+      <label for="volInput">Volume :</label>
+      <input id="volInput" type="range" min="0" max="100" value="10">
+      <span id="volValue" class="vol-value">20%</span>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="playBtn" title="Play">
+      <span class="icon-play"></span>
+    </button>
+    <button id="stopBtn" title="Stop">
+      <span class="icon-stop"></span>
+    </button>
+    <button id="favBtn" title="Favoris">⭐</button>
+    <button id="dlnaBtn" title="Musique" onclick="browseRoot()">🎵</button>
+    <button id="modeBtn" title="Mode lecture">▶</button>
+  </div>
+
+  <div class="search-row">
+    <input id="searchInput" type="text" placeholder="ex : monte carlo, jazz, fip..."/>
+    <button id="searchBtn" title="Rechercher">🔎</button>
+  </div>
+
+  <div id="status"></div>
+  <div id="results"></div>
+</body>
+</html>

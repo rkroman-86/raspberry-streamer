@@ -1,0 +1,353 @@
+:root{
+  --maxw: 900px;
+  --gap: 8px;
+  --muted: #777;
+}
+
+/* Reset léger */
+*{ box-sizing: border-box; }
+
+html, body{
+  max-width: 100%;
+  overflow-x: hidden; /* pas de scroll horizontal */
+}
+
+body{
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  max-width: var(--maxw);
+  margin: 20px auto;
+  padding: 0 10px;
+}
+
+h1{
+  font-size: 1.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.small{
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+#status{
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  min-height: 1.2em;
+  color: #333;
+}
+
+/* ================= NOW PLAYING (Station + Track) ================= */
+
+#nowPlaying{
+  margin: 6px 0 10px 0;
+  padding: 10px 12px;
+
+  background: #000;
+  color: #fff;
+
+  border: 1px solid #fff;
+  border-radius: 8px;
+
+  max-width: 100%;
+  min-width: 0;
+
+  overflow: hidden;
+  contain: layout paint;
+}
+
+.np-line{
+  display: flex;
+  align-items: center;
+
+  min-width: 0;
+  overflow: hidden;
+}
+
+.np-station{
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.np-track{
+  font-size: 0.92rem;
+  opacity: 0.95;
+}
+
+.np-label{
+  flex: 0 0 auto;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
+.np-marquee{
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  overflow: clip;
+  white-space: nowrap;
+  height: 1.2em;
+  contain: layout paint;
+}
+
+.np-text{
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.np-marquee.is-scroll .np-text{
+  animation: np-scroll var(--dur, 12s) linear infinite;
+}
+
+@keyframes np-scroll{
+  from { transform: translateX(0); }
+  to   { transform: translateX(var(--dx)); }
+}
+
+/* ================= TOOLBAR ================= */
+
+.toolbar{
+  display: flex;
+  gap: var(--gap);
+  align-items: center;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+
+.vol-row{
+  display: flex;
+  gap: var(--gap);
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.vol-row label{
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.vol-row input[type="range"]{
+  flex: 1;
+}
+
+.vol-value{
+  min-width: 40px;
+  text-align: right;
+  font-size: 0.9rem;
+}
+
+#playBtn,
+#stopBtn,
+#favBtn,
+#dlnaBtn,
+#modeBtn{
+  all: unset !important;
+  box-sizing: border-box !important;
+
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  border: 1px solid #fff !important;
+  border-radius: 6px !important;
+  background: rgba(0,0,0,0.65) !important;
+
+  cursor: pointer !important;
+  font-size: 18px !important;
+}
+
+#playBtn:focus, #playBtn:active,
+#stopBtn:focus, #stopBtn:active,
+#favBtn:focus,  #favBtn:active,
+#dlnaBtn:focus, #dlnaBtn:active,
+#modeBtn:focus, #modeBtn:active{
+  outline: none !important;
+  box-shadow: none !important;
+  background: rgba(0,0,0,0.85) !important;
+}
+
+/* ================= SEARCH ================= */
+
+.search-row{
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--gap) !important;
+  width: 100% !important;
+  min-width: 0;
+}
+
+.search-row input{
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  padding: 8px !important;
+  font-size: 1rem !important;
+
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.search-row button#searchBtn{
+  all: unset !important;
+  box-sizing: border-box !important;
+
+  width: 40px !important;
+  height: 40px !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  border: 1px solid #ccc !important;
+  border-radius: 6px !important;
+  background: #eee !important;
+
+  cursor: pointer !important;
+  font-size: 16px !important;
+  line-height: 1 !important;
+}
+
+/* ================= STATIONS ================= */
+
+#results{
+  max-width: 100%;
+  min-width: 0;
+}
+
+.station{
+  border: 1px solid #fff !important;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+
+  background: rgba(0,0,0,0.65);
+  overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
+  contain: layout paint;
+}
+
+.station-top{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.station-actions-col{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.play-btn,
+.fav-btn{
+  all: unset !important;
+  box-sizing: border-box !important;
+
+  width: 40px !important;
+  height: 40px !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  border: 1px solid #fff !important;
+  border-radius: 6px !important;
+  background: rgba(255,255,255,0.08) !important;
+
+  cursor: pointer !important;
+}
+
+.station-info{
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.station-name{
+  font-weight: 600;
+  color: #fff;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.station-url{
+  font-size: 0.8rem;
+  color: #ddd;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  max-width: 100%;
+}
+
+.station-bitrate{
+  font-size: 0.8rem;
+  color: #aaa;
+}
+
+/* ================= ICONES ================= */
+
+.icon-play{
+  width: 0;
+  height: 0;
+  border-left: 14px solid #fff;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  margin-left: 3px;
+}
+
+.icon-stop{
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  display: block;
+  border-radius: 2px;
+}
+
+.icon-fav{
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  transform: rotate(-45deg);
+  position: relative;
+}
+
+.icon-fav::before,
+.icon-fav::after{
+  content: "";
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  position: absolute;
+}
+
+.icon-fav::before{ top: -7px; left: 0; }
+.icon-fav::after{ left: 7px; top: 0; }
+
+/* DLNA breadcrumb */
+.dlna-breadcrumb { padding:6px 0; font-size:0.85rem; color:#aaa;
+                   border-bottom:1px solid #333; margin-bottom:6px; }
+.dlna-crumb { cursor:pointer; color:#7eb8f7; }
+.dlna-crumb:hover { text-decoration:underline; }
+.dlna-crumb-active { color:#fff; cursor:default; font-weight:bold; }
+.dlna-sep { color:#555; }
+
+/* Pagination DLNA */
+.dlna-pagination { display:flex; align-items:center; justify-content:center;
+                   gap:10px; padding:12px 0; }
