@@ -7,7 +7,7 @@ Usage (from the repo root):
   python tools/tasmota_sync.py pull            # device -> esp/   (download every file)
   python tools/tasmota_sync.py push            # esp/ -> device   (upload changed files only)
   python tools/tasmota_sync.py push --all      # upload everything
-  python tools/tasmota_sync.py ls              # list files on the device
+  python tools/tasmota_sync.py ls [--all]      # list files on the device
   python tools/tasmota_sync.py cmd "Status 0"  # run a Tasmota command, print JSON
   python tools/tasmota_sync.py log             # print the device console log
   python tools/tasmota_sync.py rm /A/old.png   # delete a file on the device
@@ -16,6 +16,7 @@ Device address: --host, or env TASMOTA_HOST, default 192.168.1.75
 Web password:   env TASMOTA_PASSWORD (user is always "admin"), empty if none.
 """
 import argparse
+import fnmatch
 import base64
 import hashlib
 import html
@@ -35,6 +36,12 @@ STATE_FILE = os.path.join(REPO, ".tasmota_state.json")  # git-ignored
 TEXT_EXT = {".be", ".jsonl", ".json", ".txt", ".html", ".htm", ".css", ".js", ".bat", ".csv", ".md"}
 SKIP_LOCAL = {".gitkeep", "README.md"}
 TIMEOUT = 30
+# Device files never pulled nor pushed: Tasmota settings, runtime data, generated covers
+IGNORE = ["/.*", "/_persist.json", "/A/rs_*"]
+
+
+def ignored(path):
+    return any(fnmatch.fnmatchcase(path, pat) for pat in IGNORE)
 
 
 class Device:
@@ -88,11 +95,11 @@ class Device:
                 dirs.append(p)
         return files, dirs
 
-    def walk(self, path="/"):
+    def walk(self, path="/", everything=False):
         files, dirs = self.listdir(path)
         for d in dirs:
-            files += self.walk(d)
-        return files
+            files += self.walk(d, everything)
+        return files if everything else [f for f in files if not ignored(f[0])]
 
     def download(self, path):
         return self._req("/ufsd?download=" + urllib.parse.quote(path))
@@ -133,7 +140,8 @@ def local_files():
                 continue
             full = os.path.join(root, n)
             rel = "/" + os.path.relpath(full, LOCAL_DIR).replace(os.sep, "/")
-            out[rel] = full
+            if not ignored(rel):
+                out[rel] = full
     return out
 
 
@@ -196,7 +204,8 @@ def main():
     sub.add_parser("pull")
     p = sub.add_parser("push")
     p.add_argument("--all", action="store_true")
-    sub.add_parser("ls")
+    l = sub.add_parser("ls")
+    l.add_argument("--all", action="store_true", help="include ignored files")
     c = sub.add_parser("cmd")
     c.add_argument("command")
     sub.add_parser("log")
@@ -210,8 +219,8 @@ def main():
     elif a.action == "push":
         do_push(dev, a.all)
     elif a.action == "ls":
-        for path, size in dev.walk("/"):
-            print("%-40s %7d" % (path, size))
+        for path, size in dev.walk("/", a.all):
+            print("%-40s %7d%s" % (path, size, "  (ignored)" if ignored(path) else ""))
     elif a.action == "cmd":
         res = dev.cmd(a.command)
         print(json.dumps(res, indent=1, ensure_ascii=False) if not isinstance(res, str) else res)
