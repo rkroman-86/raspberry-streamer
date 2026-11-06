@@ -15,6 +15,7 @@ Waveshare ESP32-S3 touch screen running Tasmota / Berry / HASPmota, linked by UA
 ## Device
 
 - ESP32-S3 (Tasmota): `192.168.1.75`
+- Raspberry Pi Zero 2 W (moOde): `rk@192.168.1.35`, code in `/opt/espbridge`, service `espbridge`
 
 ## Workflow
 
@@ -25,6 +26,14 @@ git pull
 python tools/tasmota_sync.py push        # upload changed files in esp/
 python tools/tasmota_sync.py cmd "Restart 1"
 python tools/tasmota_sync.py log
+```
+
+Pi side (SSH key + passwordless sudo required):
+
+```sh
+python tools/pi_sync.py push     # copy pi/espbridge/*.py (+ service), restart espbridge
+python tools/pi_sync.py log      # espbridge journal
+python tools/pi_sync.py status
 ```
 
 First import from the device into the repo:

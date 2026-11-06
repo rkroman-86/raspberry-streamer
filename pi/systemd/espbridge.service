@@ -1,0 +1,12 @@
+[Unit]
+Description=ESP32 UART bridge
+After=mpd.service
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/espbridge/espbridge.py
+Restart=always
+RestartSec=2
+User=root
+
+[Install]
+WantedBy=multi-user.target
