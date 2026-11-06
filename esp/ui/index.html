@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1A110F">
+<title>Radio</title>
+<link rel="stylesheet" href="/ui/f?n=style.css">
+</head>
+<body>
+<main id="home">
+  <section class="band" id="b-now">
+    <div class="now-main">
+      <div class="now-top">
+        <div class="art" id="now-art"></div>
+        <div class="now-txt">
+          <div class="lbl-now">Now playing</div>
+          <div id="now-name">No station selected</div>
+          <div id="now-status"></div>
+          <div id="now-details"></div>
+          <div class="progress hidden" id="now-busy"></div>
+        </div>
+      </div>
+      <div class="marquee dim" id="now-artist"><span>—</span></div>
+      <div class="marquee dim" id="now-title"><span>—</span></div>
+    </div>
+    <div class="side">
+      <button class="icon-btn" id="src-btn" aria-label="Source"><img alt=""></button>
+      <button class="icon-btn" id="fav-btn" aria-label="Favorites"></button>
+      <button class="icon-btn" id="geo-btn" aria-label="Around the world"></button>
+      <button class="icon-btn" id="search-btn" aria-label="Search"></button>
+    </div>
+  </section>
+  <section class="band b-st" id="b-recent"></section>
+  <section class="band b-st" id="b-fav"></section>
+  <section class="band b-st" id="b-local"></section>
+  <section class="band" id="b-ctl">
+    <button id="play-btn" aria-label="Play"></button>
+    <button id="vol-ico" aria-label="Mute"></button>
+    <input type="range" id="vol" min="0" max="100" value="60" aria-label="Volume">
+  </section>
+</main>
+<script src="/ui/f?n=app.js"></script>
+</body>
+</html>

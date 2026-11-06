@@ -8,6 +8,7 @@ Waveshare ESP32-S3 touch screen running Tasmota / Berry / HASPmota, linked by UA
 | Folder   | Content                                                              |
 |----------|----------------------------------------------------------------------|
 | `esp/`   | Mirror of the Tasmota filesystem (`*.be`, `pages.jsonl`, `A/*.png`)  |
+| `esp/ui/`| Phone web page `http://192.168.1.75/ui` (AndroRadio look): `ui.be` driver + HTML/CSS/JS |
 | `pi/`    | Pi side: `espbridge.py` (`/opt/espbridge/`) and its systemd service  |
 | `tools/` | `tasmota_sync.py`: push / pull files, run commands, read the log     |
 | `docs/`  | Notes, protocol, wiring                                              |
@@ -16,6 +17,14 @@ Waveshare ESP32-S3 touch screen running Tasmota / Berry / HASPmota, linked by UA
 
 - ESP32-S3 (Tasmota): `192.168.1.75`
 - Raspberry Pi Zero 2 W (moOde): `rk@192.168.1.35`, code in `/opt/espbridge`, service `espbridge`
+
+## Web page `/ui`
+
+`esp/ui/ui.be` is a Berry driver loaded at the end of `main_prog.be`. It serves the
+files of the `/ui` folder and a small JSON API (`/ui/api?a=state|lib|play|toggle|stop|vol|src|fsave|fdel|fmove`).
+The phone's browser does the heavy work (Radio Browser search, local stations, tuner,
+album art from MusicBrainz / Cover Art Archive / iTunes). Favorites (20) and history (10)
+live on the ESP in `/ui/library.json` (never pushed or pulled by `tasmota_sync.py`).
 
 ## Workflow
 

@@ -36,8 +36,10 @@ STATE_FILE = os.path.join(REPO, ".tasmota_state.json")  # git-ignored
 TEXT_EXT = {".be", ".jsonl", ".json", ".txt", ".html", ".htm", ".css", ".js", ".bat", ".csv", ".md"}
 SKIP_LOCAL = {".gitkeep", "README.md"}
 TIMEOUT = 30
-# Device files never pulled nor pushed: Tasmota settings, runtime data, generated covers
-IGNORE = ["/.*", "/_persist.json", "/A/rs_*"]
+# Device files never pulled nor pushed: Tasmota settings, runtime data, generated covers,
+# favorites/history of the /ui page (live data owned by the device)
+IGNORE = ["/.*", "/_persist.json", "/A/rs_*", "/ui/library.json"]
+TEXT_MAX = 12000  # bigger text files go through the streaming upload (/ufsu), like binaries
 
 
 def ignored(path):
@@ -193,7 +195,7 @@ def do_push(dev, push_all):
         if not push_all and state.get(path) == h:
             continue
         ext = os.path.splitext(path)[1].lower()
-        if ext in TEXT_EXT:
+        if ext in TEXT_EXT and len(data) <= TEXT_MAX:
             dev.upload_text(path, data.decode("utf-8"))
         else:
             dev.upload_binary(path, data)

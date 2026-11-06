@@ -524,6 +524,8 @@ end
 on_status = def (st)
   var wu = global.webui
   if wu != nil  wu.status = st  end                       # page /player
+  var ud = global.ui_drv
+  if ud != nil  ud.on_status(st)  end                     # page /ui (logo, historique)
   if global.p0b3 != nil  got_status = true  end           # ecran pret : etat affiche
   if global.p1b2 != nil  update_cover(st)  end
   update_volume(st)
@@ -703,6 +705,9 @@ tasmota.add_cmd("savefav",  cmd_savefav)
 tasmota.add_cmd("getfav",   cmd_getfav)
 
 print("main_prog loaded: " + str(size(fav_list)) + " favorites, last radio = " + last_radio["name"])
+
+# page web /ui (charge en dernier : utilise les fonctions et variables ci-dessus)
+try load("/ui/ui.be") except .. as e, m print("ui/ui.be :", e, m) end
 
 # Au demarrage de l'ESP : demande l'etat courant au Pi toutes les 3 s
 # jusqu'a ce qu'un STATUS ait ete recu ET affiche (ecran charge).
