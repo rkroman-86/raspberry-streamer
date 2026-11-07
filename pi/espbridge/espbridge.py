@@ -40,6 +40,7 @@ import serial
 from autoresume import on_wifi, on_command
 from bootgauge import uptime, boot_expected, boot_save, BOOT_POLL
 import mpdfix
+import dlna
 
 PORT = "/dev/serial0"
 BAUD = 115200
@@ -274,7 +275,9 @@ def make_thumb_png(cover, ip):
     name = hashlib.md5(f"{cover}|{THUMB_PX}".encode()).hexdigest() + ".png"
     dest = os.path.join(THUMB_DIR, name)
     if not os.path.exists(dest):
-        local = re.sub(r"^https?://[^/]+", "http://127.0.0.1", cover)
+        host_of = urllib.parse.urlparse(cover).hostname or ""
+        own = host_of in ("127.0.0.1", "localhost", ip or "", wifi_state()[1] or "")
+        local = re.sub(r"^https?://[^/]+", "http://127.0.0.1", cover) if own else cover
         try:
             with urllib.request.urlopen(local, timeout=3) as r:
                 data = r.read()
@@ -610,6 +613,23 @@ def build_status(ip):
     return st
 
 
+_build_status_vol = build_status
+
+
+def build_status(ip):
+    """Source DLNA : pochette donnee par le serveur de medias (dossier lance depuis /ui)."""
+    st = _build_status_vol(ip)
+    if st.get("source") == "dlna":
+        art = dlna.art_for(st.get("file", ""))
+        if art:
+            st["cover"] = art
+            try:
+                st["thumb"] = make_thumb_png(art, ip)
+            except Exception as e:
+                log.warning("vignette DLNA : %s", e)
+    return st
+
+
 # ---------- pont ----------
 
 EARLY_CMDS = ("PING", "SYNC", "WIFI_GET", "WIFI_CHECK", "WIFI_SET")
@@ -786,6 +806,11 @@ class Bridge:
             mpc("pause")
             self.send("OK PAUSE")
 
+        elif cmd in ("NEXT", "PREV"):          # morceau suivant / precedent (file MPD : DLNA)
+            on_command("PLAY")
+            ok = mpc("next" if cmd == "NEXT" else "previous") is not None
+            self.send(("OK " if ok else "ERR ") + cmd)
+
         elif cmd == "VOL" and bt_set_volume(arg):    # Bluetooth : volume bluez-alsa
             self.send("OK VOL " + arg)
 
@@ -805,6 +830,10 @@ class Bridge:
 def main():
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     mpdfix.start()                   # reglages MPD que moOde efface (decodeur mpg123)
+    try:
+        dlna.start()                 # serveurs DLNA du reseau : API HTTP pour la page /ui
+    except OSError as e:
+        log.warning("dlna : API HTTP indisponible : %s", e)
     ser = serial.Serial(PORT, BAUD, timeout=0.1)
     ser.reset_input_buffer()
     bridge = Bridge(ser)

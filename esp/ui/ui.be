@@ -12,7 +12,7 @@
 # Routes :
 #   /ui            index.html
 #   /ui/f?n=...    fichier du dossier /ui (ou A/src_*.png : icones des sources)
-#   /ui/api?a=...  state | lib | play | toggle | stop | vol | src | fsave | fdel | fmove
+#   /ui/api?a=...  state | lib | play | toggle | stop | next | prev | vol | src | fsave | fdel | fmove
 
 import webserver
 import string
@@ -201,12 +201,15 @@ class RadioUI
     return true
   end
 
-  # meme logique que le bouton play/stop de l'ecran
+  # meme logique que le bouton play/stop de l'ecran ; en DLNA (morceaux) : pause / reprise
   def do_toggle()
+    var dlna = global.cur_source == "dlna"
     if global.play_state == "play"
-      global.pi("STANDBY")
-      global.play_state = "stop"
+      global.pi(dlna ? "PAUSE" : "STANDBY")
+      global.play_state = dlna ? "pause" : "stop"
       global.play_btn_show()
+    elif dlna
+      global.pi("PLAY")                 # sans URL : reprend la file MPD la ou elle en etait
     elif global.cur_source == "webradio" || global.cur_source == ""
       var lr = global.last_radio
       global.manual_ts = tasmota.millis()
@@ -339,6 +342,8 @@ class RadioUI
         if   a == "play"   ok = self.do_play()
         elif a == "toggle" ok = self.do_toggle()
         elif a == "stop"   global.pi("STOP")  ok = true
+        elif a == "next"   global.pi("NEXT")  ok = true
+        elif a == "prev"   global.pi("PREV")  ok = true
         elif a == "vol"    ok = self.do_vol()
         elif a == "src"    ok = self.do_src()
         elif a == "fsave"  ok = self.do_fsave()

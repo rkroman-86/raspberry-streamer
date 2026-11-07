@@ -228,3 +228,29 @@ svg.i { width: 24px; height: 24px; fill: currentColor; display: block; flex: non
   transition: transform .35s cubic-bezier(.3,1.6,.5,1); }
 .knob-c b::after { content: ""; position: absolute; left: 11.75px; top: 3.5px; width: 2.5px; height: 9.5px;
   border-radius: 2px; background: #F3E3C3; }
+
+/* ---------- précédent / suivant ---------- */
+.skip { width: 44px; height: 44px; color: var(--on-surface); }
+.skip svg { width: 32px; height: 32px; }
+
+/* ---------- navigateur DLNA ---------- */
+.crumbs { display: flex; gap: 4px; padding: 0 16px 6px; overflow-x: auto; scrollbar-width: none; flex: none; }
+.crumbs::-webkit-scrollbar { display: none; }
+.crumb { flex: none; font-size: 12px; font-weight: 500; color: var(--primary); padding: 6px 10px; border-radius: 14px;
+  background: var(--sc-high); max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crumb:last-child { background: var(--primary-container); color: var(--on-primary-container); }
+.dl-bar { display: flex; align-items: center; gap: 8px; padding: 0 16px 8px; flex: none; }
+.tonal-btn { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 16px 0 12px; border-radius: 20px;
+  background: var(--secondary-container); font-size: 14px; font-weight: 500; }
+.tonal-btn svg { width: 20px; height: 20px; }
+.row .art.folder > svg, .row .art.server > svg, .row .art.note > svg { fill: var(--primary); opacity: .85; }
+.row.playing .r1 { color: var(--primary); }
+.row .eqi { color: var(--primary); }
+.mode-btn { display: flex; align-items: center; gap: 4px; height: 36px; padding: 0 10px; border-radius: 18px;
+  font-size: 12px; font-weight: 500; color: var(--primary); background: var(--sc-high); }
+.mode-btn svg { width: 20px; height: 20px; }
+.menu { position: fixed; z-index: 20; min-width: 200px; background: var(--sc-high); border-radius: 12px; padding: 6px 0;
+  box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+.menu button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 16px; font-size: 14px; text-align: left; }
+.menu button.on { color: var(--primary); font-weight: 500; }
+.menu svg { width: 22px; height: 22px; }

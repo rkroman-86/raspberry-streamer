@@ -26,6 +26,16 @@ The phone's browser does the heavy work (Radio Browser search, local stations, t
 album art from MusicBrainz / Cover Art Archive / iTunes). Favorites (20) and history (10)
 live on the ESP in `/ui/library.json` (never pushed or pulled by `tasmota_sync.py`).
 
+## DLNA
+
+- **Receiver**: moOde's UPnP renderer (upmpdcli) is on, named `TasmoOde Receiver`.
+  `pi/espbridge/mpdfix.py` keeps MPD's mpg123 decoder disabled (Windows casts a
+  non-seekable transcoded stream that mpg123 cannot play).
+- **Browsing**: `pi/espbridge/dlna.py` finds the media servers (SSDP), browses their
+  folders and queues a folder in MPD from the chosen track. HTTP API on port 8091
+  (`/dlna/servers|browse|play|mode|next|prev|state`, CORS open) used by the `/ui` page.
+  Play modes: `loop_all` (default), `all_once`, `random`, `one_loop`, `one_once`.
+
 ## Workflow
 
 Code lives on GitHub. The always-on PC on the LAN holds a clone and deploys to the devices.

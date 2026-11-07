@@ -37,6 +37,16 @@ const ICON = {
   eq: 'M7 18h2V6H7v12zm4 4h2V2h-2v20zm-8-8h2v-4H3v4zm12 4h2V6h-2v12zm4-8v4h2v-4h-2z',
   gear: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
   drop: 'M7 10l5 5 5-5z',
+  next: 'M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z',
+  prev: 'M6 6h2v12H6zm3.5 6l8.5 6V6z',
+  folder: 'M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z',
+  note: 'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z',
+  server: 'M20 13H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-6c0-.55-.45-1-1-1zM7 19c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM20 3H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1zM7 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z',
+  repeat: 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z',
+  repeatOne: 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4zm-4-2V9h-1l-2 1v1h1.5v4H13z',
+  shuffle: 'M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z',
+  listPlay: 'M19 9H2v2h17V9zm0-4H2v2h17V5zM2 15h13v-2H2v2zm15-2v6l5-3-5-3z',
+  one: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14h-2V9h-2V7h4v10z',
 };
 const svg = (n, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24"><path d="${ICON[n]}"/></svg>`;
 
@@ -473,8 +483,18 @@ function refreshLocal() {
   renderBands();
 }
 
+const hasQueue = () => S.src === 'dlna';          // file de morceaux : précédent / suivant
 function renderControls() {
   const active = isActive();
+  $('#prev-btn').classList.toggle('hidden', !hasQueue());
+  $('#next-btn').classList.toggle('hidden', !hasQueue());
+  const sb = $('#search-btn');
+  const want = S.src === 'dlna' ? 'folder' : 'search';
+  if (sb.dataset.icon !== want) {
+    sb.dataset.icon = want;
+    sb.innerHTML = svg(want);
+    sb.setAttribute('aria-label', want === 'folder' ? 'Browse DLNA' : 'Search');
+  }
   const btn = $('#play-btn');
   btn.innerHTML = svg(active ? 'stop' : 'play');
   btn.setAttribute('aria-label', active ? 'Stop' : 'Play');
@@ -571,6 +591,7 @@ function openSources() {
       renderAll();
       try { await api('src', { s: src }); } catch (e) { /* état suivant */ }
       setTimeout(poll, 600);
+      if (src === 'dlna') openDlna();
     };
     grid.appendChild(b);
   });
@@ -1047,13 +1068,208 @@ function openGeo() {
   if (!GEO.all) geoLoadCountries();
 }
 
+/* ---------------- DLNA : serveurs de médias du réseau (API HTTP du Pi) ---------------- */
+const DL_PORT = 8091;
+const DL_MODES = [
+  ['loop_all', 'Repeat folder', 'repeat'],
+  ['all_once', 'Play folder once', 'listPlay'],
+  ['random', 'Shuffle', 'shuffle'],
+  ['one_loop', 'Repeat track', 'repeatOne'],
+  ['one_once', 'Play track once', 'one'],
+];
+const DL = { servers: null, server: null, path: [], items: [], total: 0, loading: false, error: '', mode: 'loop_all', last: '' };
+
+/** Adresse du Pi : hôte des vignettes qu'il produit (STATUS), mémorisée pour la suite. */
+function piHost() {
+  const st = S.st || {};
+  for (const u of [st.thumb, st.cover]) {
+    const m = /^https?:\/\/([^/:]+)(?::\d+)?\/(imagesw?|coverart)/.exec(u || '');
+    if (m) { store.set('pi_host', m[1]); return m[1]; }
+  }
+  return store.get('pi_host', '');
+}
+async function dl(path, params = {}) {
+  const host = piHost();
+  if (!host) throw new Error('Streamer address unknown yet — start any playback once.');
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 20000);
+  try {
+    const r = await fetch(`http://${host}:${DL_PORT}/dlna/${path}?` + new URLSearchParams(params), { signal: ctl.signal, cache: 'no-store' });
+    const d = await r.json();
+    if (d && d.ok === false) throw new Error(d.err || 'error');
+    return d;
+  } catch (e) {
+    throw new Error(e.name === 'AbortError' ? 'The streamer did not answer.' : (e.message || String(e)));
+  } finally { clearTimeout(t); }
+}
+/** Vignette avec pictogramme de repli (serveur, dossier, morceau). */
+function iconArt(icon, url) {
+  const a = h('div', 'art ' + icon, svg(icon, ''));
+  setArt(a, url);
+  return a;
+}
+const fmtDur = s => s > 0 ? Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') : '';
+
+async function dlServers(refresh) {
+  DL.loading = true; DL.error = ''; DL.server = null; DL.path = []; refreshOpenPages();
+  try {
+    const d = await dl('servers', refresh ? { refresh: 1 } : {});
+    DL.servers = d.servers || []; DL.last = d.last || DL.last;
+  } catch (e) { DL.error = e.message; }
+  DL.loading = false; refreshOpenPages();
+}
+async function dlOpen(server, folder, keepPath) {
+  if (server) { DL.server = server; DL.path = [{ id: '0', title: server.name }]; }
+  else if (folder && !keepPath) DL.path.push(folder);
+  DL.items = []; DL.total = 0; DL.loading = true; DL.error = ''; refreshOpenPages();
+  await dlMore();
+}
+async function dlMore() {
+  const here = DL.path[DL.path.length - 1];
+  const token = DL.path.map(p => p.id).join('/');
+  DL.loading = true;
+  try {
+    const d = await dl('browse', { s: DL.server.udn, id: here.id, start: DL.items.length, count: 100 });
+    if (token !== DL.path.map(p => p.id).join('/')) return;   // l'utilisateur a changé de dossier
+    DL.items = DL.items.concat(d.items || []);
+    DL.total = d.total || DL.items.length;
+    if (!(d.items || []).length) DL.total = DL.items.length;   // serveur qui annonce trop
+  } catch (e) { DL.error = e.message; }
+  DL.loading = false; refreshOpenPages();
+}
+async function dlPlay(track) {
+  const here = DL.path[DL.path.length - 1];
+  DL.error = ''; DL.starting = track.id; refreshOpenPages();
+  try {
+    await dl('play', { s: DL.server.udn, c: here.id, i: track.id });
+    S.src = 'dlna';
+  } catch (e) { DL.error = e.message; }
+  DL.starting = null; refreshOpenPages();
+  setTimeout(poll, 800);
+}
+
+function openDlna() {
+  const modeBtn = h('button', 'mode-btn');
+  const p = openPage('DLNA', { actions: modeBtn, onClose: () => openPages.delete(render) });
+  const crumbs = h('div', 'crumbs');
+  const bar = h('div', 'dl-bar');
+  const body = h('div', 'page-body');
+  p.page.appendChild(crumbs); p.page.appendChild(bar); p.page.appendChild(h('div', 'divider')); p.page.appendChild(body);
+
+  function renderMode() {
+    const m = DL_MODES.find(x => x[0] === DL.mode) || DL_MODES[0];
+    modeBtn.innerHTML = svg(m[2]) + `<span>${esc(m[1])}</span>`;
+  }
+  modeBtn.onclick = e => {
+    e.stopPropagation();
+    const menu = h('div', 'menu');
+    const r = modeBtn.getBoundingClientRect();
+    menu.style.top = (r.bottom + 4) + 'px';
+    menu.style.right = Math.max(8, innerWidth - r.right) + 'px';
+    DL_MODES.forEach(([id, label, icon]) => {
+      const b = h('button', id === DL.mode ? 'on' : '', svg(icon) + esc(label));
+      b.onclick = async ev => {
+        ev.stopPropagation(); menu.remove();
+        const before = DL.mode;
+        DL.mode = id; renderMode();
+        try { await dl('mode', { m: id }); } catch (err) { DL.mode = before; renderMode(); DL.error = err.message; refreshOpenPages(); }
+      };
+      menu.appendChild(b);
+    });
+    document.body.appendChild(menu);
+    setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 0);
+  };
+
+  let sig = null;
+  function render() {
+    renderMode();
+    const playing = S.src === 'dlna' && S.st && S.st.file ? S.st.file : '';
+    const nsig = [DL.loading, DL.error, DL.server && DL.server.udn, DL.path.map(x => x.id).join('/'), DL.items.length,
+      DL.servers ? DL.servers.length : -1, DL.starting, playing].join('|');
+    if (nsig === sig) return;
+    const sameList = sig && sig.split('|').slice(3, 5).join('|') === nsig.split('|').slice(3, 5).join('|');
+    sig = nsig;
+
+    // fil d'Ariane : Servers / serveur / dossiers
+    crumbs.innerHTML = '';
+    const top = h('button', 'crumb', 'Servers');
+    top.onclick = () => { DL.server = null; DL.path = []; sig = null; render(); if (!DL.servers) dlServers(false); };
+    crumbs.appendChild(top);
+    DL.path.forEach((f, k) => {
+      const c = h('button', 'crumb', esc(f.title));
+      c.onclick = () => { DL.path = DL.path.slice(0, k + 1); dlOpen(null, f, true); };
+      crumbs.appendChild(c);
+    });
+    crumbs.scrollLeft = crumbs.scrollWidth;
+
+    bar.innerHTML = '';
+    if (!DL.server) {
+      const b = h('button', 'tonal-btn', svg('search') + 'Search servers');
+      b.disabled = DL.loading;
+      b.onclick = () => dlServers(true);
+      bar.appendChild(b);
+    } else if (DL.total) {
+      const tracks = DL.items.filter(x => x.kind === 'track').length;
+      bar.appendChild(h('div', 'r2', `${DL.total} items` + (tracks ? ` · ${tracks} tracks — tap one to play the folder from it` : '')));
+    }
+
+    const keep = sameList ? body.scrollTop : 0;
+    body.innerHTML = '';
+    if (DL.error) body.appendChild(h('div', 'count', esc(DL.error)));
+    if (!DL.server) {
+      if (DL.loading) body.appendChild(h('div', 'center-msg', '<div class="spinner"></div><div style="margin-top:12px">Looking for media servers…</div>'));
+      else if (!DL.servers) body.appendChild(h('div', 'center-msg', 'Search the network for media servers (NAS, Plex, Windows…).'));
+      else if (!DL.servers.length) body.appendChild(h('div', 'center-msg', 'No media server found.'));
+      else DL.servers.forEach(srv => {
+        const row = h('div', 'row');
+        row.appendChild(iconArt('server', srv.icon));
+        row.appendChild(h('div', 'row-txt', `<div class="r1">${esc(srv.name)}</div>` +
+          `<div class="r2">${esc(srv.model || '')}${srv.udn === DL.last ? ' · last used' : ''}</div>`));
+        row.onclick = () => dlOpen(srv);
+        body.appendChild(row);
+      });
+      body.scrollTop = keep;
+      return;
+    }
+    if (!DL.items.length && DL.loading) { body.appendChild(h('div', 'center-msg', '<div class="spinner"></div>')); return; }
+    if (!DL.items.length && !DL.error) { body.appendChild(h('div', 'center-msg', 'This folder is empty.')); return; }
+    DL.items.forEach(it => {
+      const isPlaying = it.kind === 'track' && playing && it.url === playing;
+      const row = h('div', 'row' + (isPlaying ? ' playing' : ''));
+      row.appendChild(iconArt(it.kind === 'folder' ? 'folder' : 'note', it.art));
+      const sub = it.kind === 'folder' ? (it.count >= 0 ? it.count + ' items' : '')
+        : [it.artist, fmtDur(it.duration)].filter(Boolean).join(' · ');
+      row.appendChild(h('div', 'row-txt', `<div class="r1">${esc(it.title)}</div>` + (sub ? `<div class="r2">${esc(sub)}</div>` : '')));
+      if (DL.starting === it.id) row.appendChild(h('div', '', '<div class="spinner" style="width:22px;height:22px;border-width:2px"></div>'));
+      else if (isPlaying) row.appendChild(h('div', 'eqi', svg('eq')));
+      row.onclick = () => (it.kind === 'folder' ? dlOpen(null, { id: it.id, title: it.title }) : dlPlay(it));
+      body.appendChild(row);
+    });
+    if (DL.loading) body.appendChild(h('div', 'progress lin'));
+    body.scrollTop = keep;
+  }
+  // pages suivantes au défilement
+  body.addEventListener('scroll', () => {
+    if (DL.server && !DL.loading && DL.items.length < DL.total && body.scrollTop + body.clientHeight > body.scrollHeight - 300) dlMore();
+  }, { passive: true });
+
+  render();
+  openPages.add(render);
+  dl('state').then(d => { DL.mode = d.mode || DL.mode; DL.last = d.server || DL.last; sig = null; render(); }).catch(() => {});
+  if (!DL.server && !DL.servers) dlServers(false);
+}
+
 /* ---------------- démarrage ---------------- */
 $('#fav-btn').innerHTML = svg('fav');
 $('#geo-btn').innerHTML = svg('globe');
 $('#search-btn').innerHTML = svg('search');
 $('#fav-btn').onclick = () => openFavorites();
 $('#geo-btn').onclick = openGeo;
-$('#search-btn').onclick = openSearch;
+$('#search-btn').onclick = () => (S.src === 'dlna' ? openDlna() : openSearch());
+$('#prev-btn').innerHTML = svg('prev');
+$('#next-btn').innerHTML = svg('next');
+$('#prev-btn').onclick = () => { api('prev').catch(() => {}); setTimeout(poll, 700); };
+$('#next-btn').onclick = () => { api('next').catch(() => {}); setTimeout(poll, 700); };
 $('#src-btn').onclick = openSources;
 $('#play-btn').onclick = togglePlay;
 const vol = $('#vol');
