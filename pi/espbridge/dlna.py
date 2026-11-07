@@ -13,6 +13,7 @@
 #                                          file MPD = morceaux du dossier, lecture depuis i
 #   /dlna/mode[?m=<mode>]                  mode de lecture (lu / change)
 #   /dlna/next, /dlna/prev                 morceau suivant / precedent
+#   /dlna/seek?t=<secondes>                position dans le morceau
 #   /dlna/state                            mode, dernier serveur, file en cours
 #
 # Modes (reglages MPD repeat / random / single) :
@@ -59,6 +60,7 @@ NS = {
 _servers = {}               # udn -> {udn, name, model, icon, control, location}
 _lock = threading.Lock()
 _art = {}                   # url du morceau -> pochette (pour le STATUS)
+_dur = {}                   # url du morceau -> duree en s (si MPD ne la trouve pas)
 _state = {"mode": "loop_all", "server": "", "queue": None}
 
 
@@ -364,13 +366,16 @@ def play(udn, container, item_id):
                         pass                    # MPD refuse parfois les tags sur les flux
             if t.get("art"):
                 _art[t["url"]] = t["art"]
+            if t.get("duration"):
+                _dur[t["url"]] = t["duration"]
         _apply_mode(mpd, _state["mode"])
         mpd.cmd("play %d" % pos)
     finally:
         mpd.close()
-    if len(_art) > 3000:                        # cache borne
-        for k in list(_art)[:1000]:
-            _art.pop(k, None)
+    for cache in (_art, _dur):                  # caches bornes
+        if len(cache) > 3000:
+            for k in list(cache)[:1000]:
+                cache.pop(k, None)
     _state["queue"] = {"server": udn, "container": container, "count": len(tracks), "pos": pos}
     log.info("dlna : %d morceau(x) dans la file, lecture depuis le n°%d", len(tracks), pos + 1)
     return {"ok": True, "count": len(tracks), "pos": pos}
@@ -386,6 +391,27 @@ def step(direction):
 
 def art_for(url):
     return _art.get(url, "")
+
+
+def duration_for(url):
+    return _dur.get(url, 0)
+
+
+def mode_from(repeat, random, single):
+    """Nom du mode d'apres les reglages reels de MPD (change aussi par moOde ou un controleur)."""
+    if random:
+        return "random"
+    if single:
+        return "one_loop" if repeat else "one_once"
+    return "loop_all" if repeat else "all_once"
+
+
+def seek(seconds):
+    mpd = Mpd()
+    try:
+        mpd.cmd("seekcur %d" % max(0, int(seconds)))
+    finally:
+        mpd.close()
 
 
 # ---------- HTTP ----------
@@ -434,6 +460,9 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send(200, {"mode": _state["mode"], "modes": list(MODES)})
             elif u.path in ("/dlna/next", "/dlna/prev"):
                 step(1 if u.path.endswith("next") else -1)
+                self._send(200, {"ok": True})
+            elif u.path == "/dlna/seek":
+                seek(float(q["t"]))
                 self._send(200, {"ok": True})
             elif u.path == "/dlna/state":
                 self._send(200, {"mode": _state["mode"], "server": _state["server"],

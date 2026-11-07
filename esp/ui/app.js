@@ -63,6 +63,7 @@ const S = {
   optimistic: null, optimisticTs: 0,   // station lancée depuis la page, en attendant l'ESP
   volLocalTs: 0, volDrag: false, volBefore: 50,
   trackArt: null, artKey: '',
+  pos: { el: 0, at: 0, dur: 0, playing: false }, seekDrag: false, seekLocalTs: 0,
 };
 
 const normUrl = u => String(u || '').trim().replace(/\/+$/, '').toLowerCase();
@@ -488,6 +489,10 @@ function renderControls() {
   const active = isActive();
   $('#prev-btn').classList.toggle('hidden', !hasQueue());
   $('#next-btn').classList.toggle('hidden', !hasQueue());
+  const mh = $('#mode-home');
+  mh.classList.toggle('hidden', !hasQueue());
+  const mi = modeInfo(curMode());
+  if (mh.dataset.mode !== mi[0]) { mh.dataset.mode = mi[0]; mh.innerHTML = svg(mi[2]); mh.setAttribute('aria-label', mi[1]); }
   const sb = $('#search-btn');
   const want = S.src === 'dlna' ? 'folder' : 'search';
   if (sb.dataset.icon !== want) {
@@ -508,7 +513,27 @@ function renderVolIcon() {
   $('#vol-ico').innerHTML = svg(v <= 0 ? 'volOff' : v < 50 ? 'volDown' : 'volUp');
 }
 
-function renderAll() { renderNow(); renderBands(); renderControls(); refreshOpenPages(); }
+function renderAll() { renderNow(); renderBands(); renderControls(); renderSeek(); refreshOpenPages(); }
+
+/* ---------------- position dans le morceau ---------------- */
+const posNow = () => {
+  const p = S.pos;
+  const el = p.el + (p.playing ? (Date.now() - p.at) / 1000 : 0);
+  return p.dur > 0 ? Math.min(p.dur, Math.max(0, el)) : Math.max(0, el);
+};
+function renderSeek() {
+  const box = $('#seek');
+  const show = !isWeb() && hasQueue() && S.pos.dur > 0;
+  box.classList.toggle('hidden', !show);
+  if (!show || S.seekDrag) return;
+  const bar = $('#seek-bar');
+  if (+bar.max !== Math.round(S.pos.dur)) bar.max = Math.round(S.pos.dur);
+  const el = posNow();
+  bar.value = Math.round(el);
+  $('#seek-el').textContent = fmtDur(Math.floor(el)) || '0:00';
+  $('#seek-dur').textContent = fmtDur(Math.round(S.pos.dur));
+}
+setInterval(() => { if (!document.hidden) renderSeek(); }, 500);
 
 /* ---------------- actions ---------------- */
 async function play(s) {
@@ -553,7 +578,11 @@ async function poll() {
     S.ps = d.ps || (S.st && S.st.state) || 'stop';
     S.cur = d.cur || null;
     S.last = d.last || null;
+    if (S.st && !S.seekDrag && Date.now() - S.seekLocalTs > 2500) {
+      S.pos = { el: +S.st.elapsed || 0, at: Date.now() - (+d.age || 0), dur: +S.st.duration || 0, playing: S.st.state === 'play' };
+    }
     if (S.optimistic && S.cur && same(S.cur, S.optimistic) && isActive()) S.optimistic = null;
+    if (modeLocal && S.st && S.st.mode === modeLocal) modeLocal = null;   // confirmé : les changements suivants s'affichent tout de suite
     if (d.rev !== S.rev) await loadLib(d.rev);
     renderAll();
   } catch (e) {
@@ -1078,6 +1107,32 @@ const DL_MODES = [
   ['one_once', 'Play track once', 'one'],
 ];
 const DL = { servers: null, server: null, path: [], items: [], total: 0, loading: false, error: '', mode: 'loop_all', last: '' };
+const modeInfo = m => DL_MODES.find(x => x[0] === m) || DL_MODES[0];
+/** Mode réel : celui que le Pi lit dans MPD (STATUS), sinon le dernier connu. */
+let modeLocal = null, modeLocalTs = 0;
+const curMode = () => (modeLocal && Date.now() - modeLocalTs < 4000) ? modeLocal : ((S.st && S.st.mode) || DL.mode);
+async function setMode(m) {
+  modeLocal = m; modeLocalTs = Date.now();
+  renderAll();
+  try { await api('mode', { m }); } catch (e) { modeLocal = null; renderAll(); }
+  setTimeout(poll, 800);
+}
+function openModeMenu(anchor, current, onPick) {
+  document.querySelectorAll('.menu').forEach(x => x.remove());
+  const menu = h('div', 'menu');
+  const r = anchor.getBoundingClientRect();
+  menu.style.right = Math.max(8, innerWidth - r.right) + 'px';
+  DL_MODES.forEach(([id, label, icon]) => {
+    const b = h('button', id === current ? 'on' : '', svg(icon) + esc(label));
+    b.onclick = ev => { ev.stopPropagation(); menu.remove(); onPick(id); };
+    menu.appendChild(b);
+  });
+  document.body.appendChild(menu);
+  // au-dessus du bouton s'il est en bas de l'écran
+  const below = r.bottom + 4 + menu.offsetHeight < innerHeight;
+  menu.style.top = (below ? r.bottom + 4 : Math.max(8, r.top - 4 - menu.offsetHeight)) + 'px';
+  setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 0);
+}
 
 /** Adresse du Pi : hôte des vignettes qu'il produit (STATUS), mémorisée pour la suite. */
 function piHost() {
@@ -1157,28 +1212,12 @@ function openDlna() {
   p.page.appendChild(crumbs); p.page.appendChild(bar); p.page.appendChild(h('div', 'divider')); p.page.appendChild(body);
 
   function renderMode() {
-    const m = DL_MODES.find(x => x[0] === DL.mode) || DL_MODES[0];
+    const m = modeInfo(curMode());
+    if (modeBtn.dataset.mode === m[0]) return;
+    modeBtn.dataset.mode = m[0];
     modeBtn.innerHTML = svg(m[2]) + `<span>${esc(m[1])}</span>`;
   }
-  modeBtn.onclick = e => {
-    e.stopPropagation();
-    const menu = h('div', 'menu');
-    const r = modeBtn.getBoundingClientRect();
-    menu.style.top = (r.bottom + 4) + 'px';
-    menu.style.right = Math.max(8, innerWidth - r.right) + 'px';
-    DL_MODES.forEach(([id, label, icon]) => {
-      const b = h('button', id === DL.mode ? 'on' : '', svg(icon) + esc(label));
-      b.onclick = async ev => {
-        ev.stopPropagation(); menu.remove();
-        const before = DL.mode;
-        DL.mode = id; renderMode();
-        try { await dl('mode', { m: id }); } catch (err) { DL.mode = before; renderMode(); DL.error = err.message; refreshOpenPages(); }
-      };
-      menu.appendChild(b);
-    });
-    document.body.appendChild(menu);
-    setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 0);
-  };
+  modeBtn.onclick = e => { e.stopPropagation(); openModeMenu(modeBtn, curMode(), setMode); };
 
   let sig = null;
   function render() {
@@ -1266,6 +1305,17 @@ $('#search-btn').innerHTML = svg('search');
 $('#fav-btn').onclick = () => openFavorites();
 $('#geo-btn').onclick = openGeo;
 $('#search-btn').onclick = () => (S.src === 'dlna' ? openDlna() : openSearch());
+const seekBar = $('#seek-bar');
+seekBar.addEventListener('pointerdown', () => { S.seekDrag = true; });
+seekBar.addEventListener('input', () => { S.seekDrag = true; $('#seek-el').textContent = fmtDur(+seekBar.value) || '0:00'; });
+seekBar.addEventListener('change', () => {
+  const t = +seekBar.value;
+  S.seekDrag = false;
+  S.seekLocalTs = Date.now();
+  S.pos = { ...S.pos, el: t, at: Date.now() };
+  api('seek', { t }).catch(() => {});
+});
+$('#mode-home').onclick = e => { e.stopPropagation(); openModeMenu($('#mode-home'), curMode(), setMode); };
 $('#prev-btn').innerHTML = svg('prev');
 $('#next-btn').innerHTML = svg('next');
 $('#prev-btn').onclick = () => { api('prev').catch(() => {}); setTimeout(poll, 700); };

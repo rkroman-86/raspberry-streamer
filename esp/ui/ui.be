@@ -12,7 +12,8 @@
 # Routes :
 #   /ui            index.html
 #   /ui/f?n=...    fichier du dossier /ui (ou A/src_*.png : icones des sources)
-#   /ui/api?a=...  state | lib | play | toggle | stop | next | prev | vol | src | fsave | fdel | fmove
+#   /ui/api?a=...  state | lib | play | toggle | stop | next | prev | mode | seek | vol | src
+#                  | fsave | fdel | fmove
 
 import webserver
 import string
@@ -43,12 +44,14 @@ class RadioUI
   var cur        # station en cours (infos completes : logo, pays, codec...)
   var pending    # station demandee depuis la page, en attente du STATUS du Pi
   var rec_url    # URL suivie pour l'historique (ajout apres 5 s de lecture)
+  var st_ms      # reception du dernier STATUS (la page en deduit la position du morceau)
 
   def init()
     self.rev = 1
     self.cur = nil
     self.pending = nil
     self.rec_url = ""
+    self.st_ms = tasmota.millis()
     self.load_lib()
     tasmota.add_driver(self)
     # Tasmota appelle web_add_handler() au demarrage du serveur web ; l'appel
@@ -137,6 +140,7 @@ class RadioUI
 
   # ---------- donnees venant du Pi (appele par main_prog.be) ----------
   def on_status(st)
+    self.st_ms = tasmota.millis()
     if st.find("source") != "webradio" || st.find("state") != "play"  return  end
     var url = st.find("file", "")
     if url == ""  return  end
@@ -236,6 +240,22 @@ class RadioUI
     return true
   end
 
+  def do_mode()
+    var m = self.arg("m")
+    if global.MODES.find(m) == nil  return false  end
+    global.play_mode = m
+    global.mode_show()                  # bouton de l'ecran tout de suite, le STATUS confirmera
+    global.pi("MODE " + m)
+    return true
+  end
+
+  def do_seek()
+    var t = int(self.arg("t"))
+    if t < 0  return false  end
+    global.pi("SEEK " + str(t))
+    return true
+  end
+
   def slot(name, n)
     var i = int(self.arg(name)) - 1
     return (i >= 0 && i < n) ? i : nil
@@ -275,7 +295,8 @@ class RadioUI
     var wu = global.webui
     var st = (wu != nil) ? wu.status : nil
     return json.dump({"st": st, "src": global.cur_source, "ps": global.play_state,
-                      "cur": self.cur, "rev": self.rev, "last": global.last_radio})
+                      "cur": self.cur, "rev": self.rev, "last": global.last_radio,
+                      "age": tasmota.millis() - self.st_ms})
   end
 
   # ---------- integration Tasmota ----------
@@ -344,6 +365,8 @@ class RadioUI
         elif a == "stop"   global.pi("STOP")  ok = true
         elif a == "next"   global.pi("NEXT")  ok = true
         elif a == "prev"   global.pi("PREV")  ok = true
+        elif a == "mode"   ok = self.do_mode()
+        elif a == "seek"   ok = self.do_seek()
         elif a == "vol"    ok = self.do_vol()
         elif a == "src"    ok = self.do_src()
         elif a == "fsave"  ok = self.do_fsave()

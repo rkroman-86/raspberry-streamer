@@ -184,8 +184,8 @@ end
 # un objet 200x200 (taille des vignettes du Pi) reduit a 180 px (scale 230)
 # et centre sur la case : x=-10, y=70.
 # ---------------------------------------------------------------
-var COVERS = {"p1b2": 230, "p3b2": 230, "p4b2": 230}   # 200 px -> 180 px
-var COVER_KEY = {"webradio": "p1b2", "airplay": "p3b2", "spotify": "p4b2"}
+var COVERS = {"p1b2": 230, "p3b2": 230, "p4b2": 230, "p5b2": 230}   # 200 px -> 180 px
+var COVER_KEY = {"webradio": "p1b2", "airplay": "p3b2", "spotify": "p4b2", "dlna": "p5b2"}
 var cover_url   = ""   # derniere pochette demandee ("page|url")
 var cover_shown = {}   # page -> image affichee (evite de redessiner pour rien)
 
@@ -436,6 +436,8 @@ def update_track(st)
     set_parts("p1b10", [st.find("station", ""), t])
   elif src == "airplay" || src == "spotify"
     set_parts(src == "airplay" ? "p3b10" : "p4b10", [at, st.find("album", "")])
+  elif src == "dlna"
+    set_parts("p5b10", (at == "" && st.find("album", "") == "") ? ["DLNA"] : [at, st.find("album", "")])
   elif src == "bluetooth"
     var parts = [at, st.find("album", ""), st.find("app", "")]
     set_parts("p2b10", (at == "" && st.find("album", "") == "" && st.find("app", "") == "") ? ["Bluetooth"] : parts)
@@ -458,6 +460,20 @@ var pi_net  = true
 def nowifi_show()
   var o = global.p0b7
   if o != nil  o.hidden = (pi_wifi && pi_net) || cur_source == "bluetooth"  end
+end
+
+# Mode de lecture (file MPD : DLNA). Le Pi l'indique dans chaque STATUS ("mode"),
+# d'apres les reglages reels de MPD : le bouton suit aussi les changements faits
+# depuis le telephone ou moOde. Un appui passe au mode suivant.
+var MODES     = ["loop_all", "all_once", "random", "one_loop", "one_once"]
+var MODE_TEXT = {"loop_all": "\uf079\nALL", "all_once": "\uf00b\nALL", "random": "\uf074",
+                 "one_loop": "\uf079\n1", "one_once": "\uf00b\n1"}
+var play_mode = "loop_all"
+def mode_show()
+  var b = global.p5b72
+  if b == nil  return  end
+  var t = MODE_TEXT.find(play_mode, "?")
+  if b.text != t  b.text = t  end
 end
 
 # affiche la source active sur l'icone du bouton du haut
@@ -530,6 +546,11 @@ on_status = def (st)
   if global.p1b2 != nil  update_cover(st)  end
   update_volume(st)
   update_track(st)
+  var md = st.find("mode")
+  if md != nil && md != play_mode
+    play_mode = md
+    mode_show()
+  end
   track_last_radio(st)
   play_state = st.find("state", "stop")
   play_btn_show()
@@ -601,7 +622,11 @@ end)
 #                AirPlay / Spotify / Bluetooth -> rien (lance depuis le telephone)
 # L'ecran n'est pas touche : le dimming de pages.jsonl s'en occupe.
 tasmota.add_rule("hasp#p0b1#event=up", def (value, trigger, msg)
-  if play_state == "play"
+  if play_state == "play" && cur_source == "dlna"
+    pi("PAUSE")                                           # morceaux : pause, Play reprend au meme endroit
+    play_state = "pause"
+    play_btn_show()
+  elif play_state == "play"
     pi("STANDBY")
     play_state = "stop"                                   # retour immediat, le STATUS confirmera
     play_btn_show()
@@ -613,6 +638,17 @@ tasmota.add_rule("hasp#p0b1#event=up", def (value, trigger, msg)
     pi("PLAY")
   end
 end)
+
+# page DLNA : precedent / mode / suivant
+tasmota.add_rule("hasp#p5b71#event=up", def (value, trigger, msg) pi("PREV") end)
+tasmota.add_rule("hasp#p5b73#event=up", def (value, trigger, msg) pi("NEXT") end)
+tasmota.add_rule("hasp#p5b72#event=up", def (value, trigger, msg)
+  var i = MODES.find(play_mode)
+  play_mode = MODES[((i == nil) ? 0 : i + 1) % size(MODES)]
+  mode_show()                                             # retour immediat, le STATUS confirmera
+  pi("MODE " + play_mode)
+end)
+tasmota.set_timer(3000, mode_show)                        # pages chargees : texte du mode
 
 # ---------------------------------------------------------------
 # Commandes Tasmota (memes noms qu'avant pour l'interface web)

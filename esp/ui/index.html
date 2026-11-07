@@ -23,6 +23,7 @@
       </div>
       <div class="marquee dim" id="now-artist"><span>—</span></div>
       <div class="marquee dim" id="now-title"><span>—</span></div>
+      <div class="seek hidden" id="seek"><span id="seek-el">0:00</span><input type="range" id="seek-bar" min="0" max="100" value="0" step="1" aria-label="Position"><span id="seek-dur">0:00</span></div>
     </div>
     <div class="side">
       <button class="icon-btn" id="src-btn" aria-label="Source"><img alt=""></button>
@@ -38,6 +39,7 @@
     <button class="icon-btn skip hidden" id="prev-btn" aria-label="Previous"></button>
     <button id="play-btn" aria-label="Play"></button>
     <button class="icon-btn skip hidden" id="next-btn" aria-label="Next"></button>
+    <button class="icon-btn hidden" id="mode-home" aria-label="Play mode"></button>
     <button id="vol-ico" aria-label="Mute"></button>
     <input type="range" id="vol" min="0" max="100" value="60" aria-label="Volume">
   </section>

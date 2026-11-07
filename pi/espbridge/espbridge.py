@@ -617,9 +617,14 @@ _build_status_vol = build_status
 
 
 def build_status(ip):
-    """Source DLNA : pochette donnee par le serveur de medias (dossier lance depuis /ui)."""
+    """Mode de lecture (d'apres MPD) ; source DLNA : pochette et duree donnees par le serveur."""
     st = _build_status_vol(ip)
+    m = mpd_query("status") or {}
+    if "repeat" in m:
+        st["mode"] = dlna.mode_from(m.get("repeat") == "1", m.get("random") == "1", m.get("single") == "1")
     if st.get("source") == "dlna":
+        if not st.get("duration"):
+            st["duration"] = dlna.duration_for(st.get("file", ""))
         art = dlna.art_for(st.get("file", ""))
         if art:
             st["cover"] = art
@@ -725,6 +730,15 @@ class Bridge:
     def send_status(self, force=False):
         st = build_status(self.ip)
         key = {k: v for k, v in st.items() if k not in ("elapsed", "format")}
+        now = time.monotonic()
+        el = st.get("elapsed") or 0
+        last = getattr(self, "last_el", None)
+        jumped = False
+        if last is not None and st.get("duration"):
+            expected = last[0] + (now - last[1] if st.get("state") == "play" else 0)
+            jumped = abs(el - expected) > 4
+        if jumped:
+            force = True
         if not force:
             if key == self.last_status_key:
                 self.pending_key = None
@@ -734,6 +748,7 @@ class Bridge:
                 return
         self.pending_key = None
         self.last_status_key = key
+        self.last_el = (el, now)
         self.send("STATUS " + json.dumps(st, ensure_ascii=False, separators=(",", ":")))
 
     # --- commandes ESP ---
@@ -805,6 +820,24 @@ class Bridge:
         elif cmd == "PAUSE":
             mpc("pause")
             self.send("OK PAUSE")
+
+        elif cmd == "MODE":                    # mode de lecture (loop_all, all_once, random, one_loop, one_once)
+            try:
+                dlna.set_mode(arg)
+                self.send("OK MODE " + arg)
+            except Exception as e:
+                log.warning("MODE %s : %s", arg, e)
+                self.send("ERR MODE")
+            self.send_status(force=True)
+
+        elif cmd == "SEEK":                    # position dans le morceau, en secondes
+            try:
+                dlna.seek(float(arg))
+                self.send("OK SEEK")
+            except Exception as e:
+                log.warning("SEEK %s : %s", arg, e)
+                self.send("ERR SEEK")
+            self.send_status(force=True)
 
         elif cmd in ("NEXT", "PREV"):          # morceau suivant / precedent (file MPD : DLNA)
             on_command("PLAY")
