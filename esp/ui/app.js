@@ -545,6 +545,7 @@ async function play(s) {
   setTimeout(poll, 600);
 }
 async function togglePlay() {
+  if (S.src === 'dlna' && !isActive()) return dlResume();
   if (!isActive() && isWeb() && !(S.st && S.st.file) && !S.last?.url) {
     const c = currentStation();
     if (c) return play(c);
@@ -618,9 +619,13 @@ function openSources() {
       p.close();
       S.src = src;
       renderAll();
+      if (src === 'dlna') {                 // reprise de la dernière lecture DLNA, sinon choix du dossier
+        try { await api('src', { s: src, np: 1 }); } catch (e) { /* état suivant */ }
+        dlResume();
+        return;
+      }
       try { await api('src', { s: src }); } catch (e) { /* état suivant */ }
       setTimeout(poll, 600);
-      if (src === 'dlna') openDlna();
     };
     grid.appendChild(b);
   });
@@ -1191,6 +1196,18 @@ async function dlMore() {
     if (!(d.items || []).length) DL.total = DL.items.length;   // serveur qui annonce trop
   } catch (e) { DL.error = e.message; }
   DL.loading = false; refreshOpenPages();
+}
+/** Dernière lecture DLNA (dossier, morceau, position, mode) ; impossible : page de choix. */
+async function dlResume() {
+  S.ps = 'play'; renderControls();               // retour immédiat, l'état suivant corrigera
+  try {
+    await dl('resume');
+  } catch (e) {
+    S.ps = 'stop'; renderControls();
+    DL.error = /no previous/i.test(e.message) ? '' : 'Last playback is not available: ' + e.message;
+    openDlna();
+  }
+  setTimeout(poll, 800);
 }
 async function dlPlay(track) {
   const here = DL.path[DL.path.length - 1];

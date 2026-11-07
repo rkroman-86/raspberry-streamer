@@ -519,6 +519,10 @@ var got_status = false # un STATUS a-t-il ete affiche depuis le demarrage ?
 # appele par pizero_uart.be pour CHAQUE ligne recue du Pi, avant tout autre traitement ;
 # renvoie true si la ligne est consommee (lignes WIFI_* de la synchro)
 on_pi_line = def (line)
+  if line == "ERR DLNA_RESUME"                            # pas de lecture DLNA a reprendre
+    set_parts("p5b10", ["Pick music on the phone"])
+    return true
+  end
   if line == "WIFI_NONE"
     pi_wifi = false
     nowifi_show()
@@ -574,6 +578,8 @@ def select_source(i)
   src_cancel()
   if src == "webradio"
     play_radio(last_radio["name"], last_radio["url"])
+  elif src == "dlna"
+    pi("DLNA_RESUME")             # derniere lecture DLNA (dossier, morceau, position, mode)
   else
     pi("STOP")
   end
@@ -634,6 +640,8 @@ tasmota.add_rule("hasp#p0b1#event=up", def (value, trigger, msg)
     manual_ts = tasmota.millis()
     play_radio(last_radio["name"], last_radio["url"])
     set_source("webradio")
+  elif cur_source == "dlna"
+    pi("DLNA_RESUME")                                     # reprise, ou derniere lecture DLNA
   elif RENDERERS.find(cur_source) == nil
     pi("PLAY")
   end

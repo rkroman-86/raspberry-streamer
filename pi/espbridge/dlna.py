@@ -14,6 +14,7 @@
 #   /dlna/mode[?m=<mode>]                  mode de lecture (lu / change)
 #   /dlna/next, /dlna/prev                 morceau suivant / precedent
 #   /dlna/seek?t=<secondes>                position dans le morceau
+#   /dlna/resume                           reprend la derniere lecture (dossier, morceau, position)
 #   /dlna/state                            mode, dernier serveur, file en cours
 #
 # Modes (reglages MPD repeat / random / single) :
@@ -61,7 +62,10 @@ _servers = {}               # udn -> {udn, name, model, icon, control, location}
 _lock = threading.Lock()
 _art = {}                   # url du morceau -> pochette (pour le STATUS)
 _dur = {}                   # url du morceau -> duree en s (si MPD ne la trouve pas)
-_state = {"mode": "loop_all", "server": "", "queue": None}
+_ids = {}                   # url du morceau -> identifiant DLNA (reprise sur le bon morceau)
+_state = {"mode": "loop_all", "server": "", "queue": None,
+          "last": None}     # derniere lecture : server, container, item, url, title, elapsed
+_saved = {"at": 0.0}
 
 
 # ---------- etat persistant ----------
@@ -72,6 +76,8 @@ def _load_state():
         if d.get("mode") in MODES:
             _state["mode"] = d["mode"]
         _state["server"] = d.get("server", "")
+        if isinstance(d.get("last"), dict):
+            _state["last"] = d["last"]
     except (OSError, ValueError):
         pass
 
@@ -81,7 +87,7 @@ def _save_state():
         os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
         tmp = STATE_FILE + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
-            json.dump({"mode": _state["mode"], "server": _state["server"]}, f)
+            json.dump({"mode": _state["mode"], "server": _state["server"], "last": _state["last"]}, f)
         os.replace(tmp, STATE_FILE)
     except OSError as e:
         log.warning("dlna : sauvegarde impossible : %s", e)
@@ -368,15 +374,20 @@ def play(udn, container, item_id):
                 _art[t["url"]] = t["art"]
             if t.get("duration"):
                 _dur[t["url"]] = t["duration"]
+            _ids[t["url"]] = t["id"]
         _apply_mode(mpd, _state["mode"])
         mpd.cmd("play %d" % pos)
     finally:
         mpd.close()
-    for cache in (_art, _dur):                  # caches bornes
+    for cache in (_art, _dur, _ids):            # caches bornes
         if len(cache) > 3000:
             for k in list(cache)[:1000]:
                 cache.pop(k, None)
     _state["queue"] = {"server": udn, "container": container, "count": len(tracks), "pos": pos}
+    t = tracks[pos]
+    _state["last"] = {"server": udn, "container": container, "item": t["id"], "url": t["url"],
+                      "title": t.get("title", ""), "elapsed": 0}
+    _save_state()
     log.info("dlna : %d morceau(x) dans la file, lecture depuis le n°%d", len(tracks), pos + 1)
     return {"ok": True, "count": len(tracks), "pos": pos}
 
@@ -395,6 +406,64 @@ def art_for(url):
 
 def duration_for(url):
     return _dur.get(url, 0)
+
+
+def note_playing(url, elapsed):
+    """Appele a chaque STATUS DLNA : retient le morceau et la position pour la reprise."""
+    last = _state["last"]
+    if not last or not url:
+        return
+    item = _ids.get(url)
+    if item is None and url != last.get("url"):
+        return                                  # morceau qui ne vient pas de notre file (cast)
+    now = time.monotonic()
+    changed = item is not None and item != last.get("item")
+    if changed:
+        last.update(item=item, url=url)
+    last["elapsed"] = int(elapsed or 0)
+    if changed or now - _saved["at"] > 30:
+        _saved["at"] = now
+        _save_state()
+
+
+def resume():
+    """Reprend la derniere lecture DLNA (meme dossier, morceau, position et mode).
+    File MPD encore en place : simple reprise ; sinon la file est reconstruite."""
+    last = _state["last"]
+    m = {}
+    try:
+        mpd = Mpd()
+        try:
+            m.update(mpd.cmd("currentsong"))
+            m.update(mpd.cmd("status"))
+        finally:
+            mpd.close()
+    except (OSError, RuntimeError):
+        pass
+    f = m.get("file", "")
+    if f and (f in _ids or (last and f == last.get("url"))):
+        main = sys.modules.get("__main__")
+        rel = getattr(main, "release_renderer", None)
+        if rel:
+            rel()
+        mpd = Mpd()
+        try:
+            mpd.cmd("play")
+        finally:
+            mpd.close()
+        return {"ok": True, "resumed": "queue"}
+    if not last:
+        raise LookupError("no previous DLNA playback")
+    elapsed = last.get("elapsed", 0)
+    r = play(last["server"], last["container"], last["item"])
+    if elapsed > 5:
+        try:
+            time.sleep(0.8)                     # laisse MPD ouvrir le flux avant de s'y deplacer
+            seek(elapsed)
+        except Exception as e:
+            log.info("dlna : reprise sans position (%s)", e)
+    r["resumed"] = "rebuilt"
+    return r
 
 
 def mode_from(repeat, random, single):
@@ -464,9 +533,11 @@ class _Handler(BaseHTTPRequestHandler):
             elif u.path == "/dlna/seek":
                 seek(float(q["t"]))
                 self._send(200, {"ok": True})
+            elif u.path == "/dlna/resume":
+                self._send(200, resume())
             elif u.path == "/dlna/state":
                 self._send(200, {"mode": _state["mode"], "server": _state["server"],
-                                 "queue": _state["queue"]})
+                                 "queue": _state["queue"], "last": _state["last"]})
             else:
                 self._send(404, {"ok": False, "err": "not found"})
         except KeyError as e:

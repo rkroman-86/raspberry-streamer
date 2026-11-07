@@ -623,6 +623,7 @@ def build_status(ip):
     if "repeat" in m:
         st["mode"] = dlna.mode_from(m.get("repeat") == "1", m.get("random") == "1", m.get("single") == "1")
     if st.get("source") == "dlna":
+        dlna.note_playing(st.get("file", ""), st.get("elapsed", 0))
         if not st.get("duration"):
             st["duration"] = dlna.duration_for(st.get("file", ""))
         art = dlna.art_for(st.get("file", ""))
@@ -820,6 +821,15 @@ class Bridge:
         elif cmd == "PAUSE":
             mpc("pause")
             self.send("OK PAUSE")
+
+        elif cmd == "DLNA_RESUME":             # source DLNA / Play : derniere lecture DLNA
+            try:
+                r = dlna.resume()
+                self.send("OK DLNA_RESUME " + r.get("resumed", ""))
+            except Exception as e:
+                log.info("DLNA_RESUME impossible : %s", e)
+                self.send("ERR DLNA_RESUME")
+            self.send_status(force=True)
 
         elif cmd == "MODE":                    # mode de lecture (loop_all, all_once, random, one_loop, one_once)
             try:

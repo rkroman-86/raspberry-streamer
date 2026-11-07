@@ -213,7 +213,7 @@ class RadioUI
       global.play_state = dlna ? "pause" : "stop"
       global.play_btn_show()
     elif dlna
-      global.pi("PLAY")                 # sans URL : reprend la file MPD la ou elle en etait
+      global.pi("DLNA_RESUME")          # reprise, ou derniere lecture DLNA (dossier, morceau, mode)
     elif global.cur_source == "webradio" || global.cur_source == ""
       var lr = global.last_radio
       global.manual_ts = tasmota.millis()
@@ -234,9 +234,17 @@ class RadioUI
   end
 
   def do_src()
-    var i = global.SOURCES.find(self.arg("s"))
+    var src = self.arg("s")
+    var i = global.SOURCES.find(src)
     if i == nil  return false  end
-    global.select_source(i)
+    if self.arg("np") == "1"            # la page lance elle-meme la lecture (reprise DLNA)
+      global.popup_show(false)
+      global.manual_ts = tasmota.millis()
+      global.src_cancel()
+      global.set_source(src)
+    else
+      global.select_source(i)
+    end
     return true
   end
 
