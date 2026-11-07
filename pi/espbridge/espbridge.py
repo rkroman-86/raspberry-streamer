@@ -39,6 +39,7 @@ import time
 import serial
 from autoresume import on_wifi, on_command
 from bootgauge import uptime, boot_expected, boot_save, BOOT_POLL
+import mpdfix
 
 PORT = "/dev/serial0"
 BAUD = 115200
@@ -803,6 +804,7 @@ class Bridge:
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(message)s")
+    mpdfix.start()                   # reglages MPD que moOde efface (decodeur mpg123)
     ser = serial.Serial(PORT, BAUD, timeout=0.1)
     ser.reset_input_buffer()
     bridge = Bridge(ser)
