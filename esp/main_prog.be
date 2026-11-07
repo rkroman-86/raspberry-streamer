@@ -470,11 +470,15 @@ var MODES     = ["loop_all", "all_once", "random", "one_loop", "one_once"]
 var MODE_TEXT = {"loop_all": "\uf079", "all_once": "\uf00b", "random": "\uf074",
                  "one_loop": "\uf0791", "one_once": "\uf00b1"}
 var play_mode = "loop_all"
+var mode_shown = "loop_all"      # texte initial du bouton dans pages.jsonl
+# ne lit jamais le texte du bouton (lecture du widget au demarrage -> plantage LVGL) :
+# la valeur affichee est gardee ici, le widget n'est touche que si elle change
 def mode_show()
+  if play_mode == mode_shown || tasmota.millis() < 15000  return  end
   var b = global.p5b72
   if b == nil  return  end
-  var t = MODE_TEXT.find(play_mode, "?")
-  if b.text != t  b.text = t  end
+  mode_shown = play_mode
+  b.text = MODE_TEXT.find(play_mode, "?")
 end
 
 # affiche la source active sur l'icone du bouton du haut
@@ -657,7 +661,7 @@ tasmota.add_rule("hasp#p5b72#event=up", def (value, trigger, msg)
   mode_show()                                             # retour immediat, le STATUS confirmera
   pi("MODE " + play_mode)
 end)
-tasmota.set_timer(3000, mode_show)                        # pages chargees : texte du mode
+tasmota.set_timer(16000, mode_show)                       # mode recu pendant le demarrage
 
 # ---------------------------------------------------------------
 # Commandes Tasmota (memes noms qu'avant pour l'interface web)
