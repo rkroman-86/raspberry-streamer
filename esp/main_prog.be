@@ -64,6 +64,17 @@ def img_name(prefix, url)
   return prefix + string.split(url, "/").pop()
 end
 
+# Reseau pret : Wi-Fi connecte depuis au moins 10 s. Avant, aucun telechargement
+# (pochette DLNA au demarrage, Wi-Fi pas encore stable -> plantage de l'ESP)
+var NET_DELAY = 10000
+var net_up_ms = 0         # instant de la connexion Wi-Fi (0 = pas connecte)
+def net_ready()
+  var up = tasmota.wifi().find("up", false)
+  if !up  net_up_ms = 0  return false  end
+  if net_up_ms == 0  net_up_ms = tasmota.millis()  end
+  return tasmota.millis() - net_up_ms >= NET_DELAY
+end
+
 # telecharge url dans COVER_DIR + name ; renvoie true si le fichier est ecrit
 def img_download(url, name)
   if string.find(url, "http://") != 0  return false  end   # chemin relatif (Pi sans IP au demarrage)
@@ -111,6 +122,10 @@ end
 
 # telecharge les vignettes manquantes, supprime celles qui ne servent plus, affiche
 def recent_sync()
+  if !net_ready()
+    tasmota.set_timer(1000, recent_sync, "recent_sync")   # reseau pas encore pret
+    return
+  end
   var keep = {}
   for r : recent
     var th = r.find("thumb", "")
@@ -225,6 +240,10 @@ end
 
 def cover_fetch(url, key)
   if key + "|" + url != cover_url  return  end   # une pochette plus recente est deja demandee
+  if !net_ready()                                 # reseau pas encore pret : on reessaie
+    tasmota.set_timer(1000, def () cover_fetch(url, key) end, "cover_fetch")
+    return
+  end
   var name = img_name("cv_", url)
   if img_download(url, name)
     cover_show("A/" + name, key)
