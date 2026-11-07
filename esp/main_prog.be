@@ -466,8 +466,9 @@ end
 # d'apres les reglages reels de MPD : le bouton suit aussi les changements faits
 # depuis le telephone ou moOde. Un appui passe au mode suivant.
 var MODES     = ["loop_all", "all_once", "random", "one_loop", "one_once"]
-var MODE_TEXT = {"loop_all": "\uf079\nALL", "all_once": "\uf00b\nALL", "random": "\uf074",
-                 "one_loop": "\uf079\n1", "one_once": "\uf00b\n1"}
+# une ligne, police montserrat-28 (celle du bouton play) : montserrat-20 absente -> plantage
+var MODE_TEXT = {"loop_all": "\uf079", "all_once": "\uf00b", "random": "\uf074",
+                 "one_loop": "\uf0791", "one_once": "\uf00b1"}
 var play_mode = "loop_all"
 def mode_show()
   var b = global.p5b72
