@@ -13,6 +13,7 @@ ESP -> Pi (commande -> réponse)
   SYNC                  -> READY + WIFI_OK/WIFI_NONE + STATUS
   PLAY <url>            -> OK PLAY    | ERR PLAY
   PLAY                  -> OK RESUME  | ERR PLAY
+  STATION <json>        -> (pas de reponse) station de /ui ajoutee a la bibliotheque moOde
   STOP                  -> OK STOP
   PAUSE                 -> OK PAUSE
   VOL <0-100>           -> OK VOL <n> | ERR VOL
@@ -41,6 +42,7 @@ from autoresume import on_wifi, on_command
 from bootgauge import uptime, boot_expected, boot_save, BOOT_POLL
 import mpdfix
 import dlna
+import moode_radio
 
 PORT = "/dev/serial0"
 BAUD = 115200
@@ -807,6 +809,15 @@ class Bridge:
                 self.send("OK PLAY" if ok else "ERR PLAY")
             else:
                 self.send("OK RESUME" if mpc("play") is not None else "ERR PLAY")
+
+        elif cmd == "STATION":                 # station lancee depuis /ui : ajout a moOde (logo)
+            try:
+                st = json.loads(arg)
+            except ValueError:
+                log.info("STATION illisible : %s", arg[:80])
+                return
+            if isinstance(st, dict):
+                moode_radio.add_async(st)
 
         elif cmd == "STANDBY":                 # bouton off de l'écran
             rel = globals().get("release_renderer")

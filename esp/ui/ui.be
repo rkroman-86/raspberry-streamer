@@ -202,6 +202,7 @@ class RadioUI
     global.manual_ts = tasmota.millis()
     global.play_radio(s["name"], url)
     global.set_source("webradio")
+    global.pi("STATION " + json.dump(s))   # le Pi l'ajoute a moOde avec son logo (si absente)
     return true
   end
 

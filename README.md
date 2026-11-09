@@ -26,6 +26,11 @@ The phone's browser does the heavy work (Radio Browser search, local stations, t
 album art from MusicBrainz / Cover Art Archive / iTunes). Favorites (20) and history (10)
 live on the ESP in `/ui/library.json` (never pushed or pulled by `tasmota_sync.py`).
 
+Stations played from `/ui` are added to moOde's Radio library (`pi/espbridge/moode_radio.py`):
+the ESP sends `STATION <json>` after `PLAY`, the Pi saves the Radio Browser logo in
+`radio-logos/` and calls moOde's own `new_station` command. moOde and the ESP screen then
+show the logo. Stations already in moOde (same URL) are left untouched.
+
 ## DLNA
 
 - **Receiver**: moOde's UPnP renderer (upmpdcli) is on, named `TasmoOde Receiver`.
