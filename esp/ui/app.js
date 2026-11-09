@@ -446,10 +446,29 @@ function mouseScroll(strip, step = 0) {
   }, { passive: false });
 }
 
+/* Fuseau horaire -> pays (plus fiable que la langue du navigateur, souvent en-US) */
+const TZ_CC = {
+  Paris:'FR', Monaco:'MC', Brussels:'BE', Luxembourg:'LU', Zurich:'CH', Berlin:'DE', Vienna:'AT', Rome:'IT',
+  Madrid:'ES', Lisbon:'PT', London:'GB', Dublin:'IE', Amsterdam:'NL', Copenhagen:'DK', Oslo:'NO', Stockholm:'SE',
+  Helsinki:'FI', Warsaw:'PL', Prague:'CZ', Bratislava:'SK', Budapest:'HU', Ljubljana:'SI', Zagreb:'HR',
+  Belgrade:'RS', Sarajevo:'BA', Podgorica:'ME', Skopje:'MK', Tirane:'AL', Athens:'GR', Sofia:'BG',
+  Bucharest:'RO', Chisinau:'MD', Kiev:'UA', Kyiv:'UA', Minsk:'BY', Moscow:'RU', Riga:'LV', Tallinn:'EE',
+  Vilnius:'LT', Istanbul:'TR', Malta:'MT', Nicosia:'CY', Andorra:'AD', Gibraltar:'GI', Reykjavik:'IS',
+  Montreal:'CA', Toronto:'CA', Vancouver:'CA', Halifax:'CA', Winnipeg:'CA', Edmonton:'CA',
+  New_York:'US', Chicago:'US', Denver:'US', Los_Angeles:'US', Phoenix:'US', Anchorage:'US', Honolulu:'US',
+  Mexico_City:'MX', Sao_Paulo:'BR', Buenos_Aires:'AR', Santiago:'CL', Bogota:'CO', Lima:'PE',
+  Casablanca:'MA', Algiers:'DZ', Tunis:'TN', Cairo:'EG', Johannesburg:'ZA', Lagos:'NG', Dakar:'SN',
+  Dubai:'AE', Jerusalem:'IL', Tel_Aviv:'IL', Tokyo:'JP', Seoul:'KR', Shanghai:'CN', Hong_Kong:'HK',
+  Singapore:'SG', Bangkok:'TH', Kolkata:'IN', Calcutta:'IN', Sydney:'AU', Melbourne:'AU', Auckland:'NZ'
+};
 function localInfo() {
-  const langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
   let cc = '';
-  for (const l of langs) { const m = /[-_]([A-Za-z]{2})\b/.exec(l); if (m) { cc = m[1].toUpperCase(); break; } }
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    cc = TZ_CC[tz.split('/').pop()] || '';
+  } catch (e) { /* pas d'Intl : langue du navigateur */ }
+  const langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
+  if (!cc) for (const l of langs) { const m = /[-_]([A-Za-z]{2})\b/.exec(l); if (m) { cc = m[1].toUpperCase(); break; } }
   let name = '';
   try { if (cc) name = new Intl.DisplayNames(['en'], { type: 'region' }).of(cc); } catch (e) { name = cc; }
   return { cc, name };
