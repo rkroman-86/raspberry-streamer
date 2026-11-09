@@ -343,7 +343,7 @@ def set_mode(mode):
         mpd.close()
 
 
-def play(udn, container, item_id):
+def play(udn, container, item_id, path=None, sname=""):
     tracks = tracks_of(udn, container)
     if not tracks:
         raise LookupError("no playable track in this folder")
@@ -386,7 +386,8 @@ def play(udn, container, item_id):
     _state["queue"] = {"server": udn, "container": container, "count": len(tracks), "pos": pos}
     t = tracks[pos]
     _state["last"] = {"server": udn, "container": container, "item": t["id"], "url": t["url"],
-                      "title": t.get("title", ""), "elapsed": 0}
+                      "title": t.get("title", ""), "elapsed": 0,
+                      "sname": sname, "path": path}     # fil d'Ariane : la page /ui rouvre ce dossier
     _save_state()
     log.info("dlna : %d morceau(x) dans la file, lecture depuis le n°%d", len(tracks), pos + 1)
     return {"ok": True, "count": len(tracks), "pos": pos}
@@ -522,7 +523,15 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send(200, browse(q["s"], q.get("id", "0"), int(q.get("start", 0)),
                                        min(500, int(q.get("count", 100)))))
             elif u.path == "/dlna/play":
-                self._send(200, play(q["s"], q["c"], q.get("i", "")))
+                path = None
+                try:
+                    pj = json.loads(q.get("p", "null"))
+                    if isinstance(pj, list):
+                        path = [{"id": str(x.get("id", "")), "title": str(x.get("title", ""))[:120]}
+                                for x in pj[:30] if isinstance(x, dict)]
+                except ValueError:
+                    pass
+                self._send(200, play(q["s"], q["c"], q.get("i", ""), path, q.get("n", "")[:120]))
             elif u.path == "/dlna/mode":
                 if q.get("m"):
                     set_mode(q["m"])

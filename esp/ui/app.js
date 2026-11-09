@@ -1232,7 +1232,7 @@ async function dlPlay(track) {
   const here = DL.path[DL.path.length - 1];
   DL.error = ''; DL.starting = track.id; refreshOpenPages();
   try {
-    await dl('play', { s: DL.server.udn, c: here.id, i: track.id });
+    await dl('play', { s: DL.server.udn, c: here.id, i: track.id, n: DL.server.name || '', p: JSON.stringify(DL.path) });
     S.src = 'dlna';
   } catch (e) { DL.error = e.message; }
   DL.starting = null; refreshOpenPages();
@@ -1330,8 +1330,30 @@ function openDlna() {
 
   render();
   openPages.add(render);
-  dl('state').then(d => { DL.mode = d.mode || DL.mode; DL.last = d.server || DL.last; sig = null; render(); }).catch(() => {});
-  if (!DL.server && !DL.servers) dlServers(false);
+  if (DL.server) return;                        // deja dans un dossier (meme session)
+  DL.loading = true; refreshOpenPages();
+  dl('state').then(d => {
+    DL.mode = d.mode || DL.mode; DL.last = d.server || DL.last;
+    if (!DL.server && !dlOpenLast(d.last)) { DL.loading = false; if (!DL.servers) dlServers(false); else refreshOpenPages(); }
+  }).catch(() => { DL.loading = false; if (!DL.servers) dlServers(false); else refreshOpenPages(); });
+}
+/** Rouvre le dossier de la derniere lecture ; serveur ou dossier disparu : choix des serveurs. */
+function dlOpenLast(last) {
+  if (!last || !last.server || !last.container) return false;
+  const name = last.sname || 'Last server';
+  const path = Array.isArray(last.path) && last.path.length ? last.path
+    : [{ id: '0', title: name }, { id: last.container, title: 'Last folder' }];
+  DL.server = { udn: last.server, name };
+  DL.path = path;
+  DL.items = []; DL.total = 0; DL.error = '';
+  dlMore().then(() => {
+    if (DL.error && DL.server && DL.server.udn === last.server) {   // plus disponible
+      DL.server = null; DL.path = [];
+      if (!DL.servers) dlServers(false);
+      DL.error = 'Last folder is not available — choose a server.'; refreshOpenPages();
+    }
+  });
+  return true;
 }
 
 /* ---------------- démarrage ---------------- */
