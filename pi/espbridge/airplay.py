@@ -12,12 +12,17 @@ pas, la barre de l'ecran ne faisait rien (meme histoire que le Bluetooth).
     L'appareil change son volume et le renvoie : ecran, moOde et source restent d'accord.
 
 Reglages gardes dans /etc/shairport-sync.conf (verifies toutes les 60 s) :
-  * service_type = "classic" : AirPlay 1. Les vieux appareils (iPad sous iOS 13)
-    n'ouvrent pas le canal audio en AirPlay 2 (titre et pochette, mais pas de son).
+  * service_type : AirPlay 2 ("auto", defaut de moOde) ou AirPlay 1 ("classic"), au choix
+    dans la page Settings de l'ESP (commande AIRPLAY 1|2). Les vieux appareils (iPad
+    sous iOS 13) n'ouvrent pas le canal audio en AirPlay 2 : titre et pochette, pas de son.
+    Choix garde dans /var/lib/espbridge/airplay.json.
   * metadonnees UDP vers 127.0.0.1:5556 (voir plus haut).
-Si le fichier change, AirPlay est relance par moOde (seulement hors lecture).
+Si le fichier change tout seul (moOde), AirPlay est relance hors lecture ; un changement
+demande depuis la page Settings est applique tout de suite.
 """
+import json
 import logging
+import os
 import re
 import socket
 import subprocess
@@ -28,6 +33,8 @@ import urllib.request
 log = logging.getLogger("espbridge")
 
 CONF = "/etc/shairport-sync.conf"
+SETTINGS = "/var/lib/espbridge/airplay.json"
+DEFAULT_VERSION = 2
 PORT = 5556
 CHECK_S = 60
 SOCKET_LINES = ('\tsocket_address = "127.0.0.1"; // espbridge : volume AirPlay\n'
@@ -37,12 +44,32 @@ SOCKET_LINES = ('\tsocket_address = "127.0.0.1"; // espbridge : volume AirPlay\n
 _st = {"vol": None, "daid": "", "acre": "", "clip": "", "dapo": "", "at": 0.0}
 _lock = threading.Lock()
 _pending_restart = [False]
+_conf_lock = threading.Lock()
+
+
+def _load_version():
+    try:
+        with open(SETTINGS, encoding="utf-8") as f:
+            v = json.load(f).get("version")
+        return v if v in (1, 2) else DEFAULT_VERSION
+    except (OSError, ValueError, AttributeError):
+        return DEFAULT_VERSION
+
+
+_version = [_load_version()]
+
+
+def get_version():
+    """AirPlay 1 ou 2 (choix de la page Settings)."""
+    return _version[0]
 
 
 # --- reglages de shairport-sync.conf -------------------------------------------------
-def _fix_conf(text):
+def _fix_conf(text, version=None):
     """Texte corrige (ou identique)."""
-    t = re.sub(r'^(\s*)service_type\s*=\s*"(auto|airplay2)"', r'\1service_type = "classic"', text, count=1, flags=re.M)
+    st = "classic" if (version or _version[0]) == 1 else "auto"
+    t = re.sub(r'^(\s*)service_type\s*=\s*"(auto|airplay2|classic)"', r'\1service_type = "%s"' % st,
+               text, count=1, flags=re.M)
     if not re.search(r'^\s*socket_address\s*=', t, re.M):
         m = re.search(r'^metadata\s*=\s*\n?\s*\{[^\n]*\n', t, re.M)
         if m:
@@ -50,8 +77,14 @@ def _fix_conf(text):
     return t
 
 
-def ensure_conf(active):
-    """Corrige le fichier ; relance AirPlay par moOde si besoin et si rien ne joue en AirPlay."""
+def ensure_conf(active, now=False):
+    """Corrige le fichier ; relance AirPlay par moOde si besoin et si rien ne joue en AirPlay
+    (now=True : relance meme en lecture, changement demande par l'utilisateur)."""
+    with _conf_lock:
+        _ensure_conf(active, now)
+
+
+def _ensure_conf(active, now):
     try:
         with open(CONF, encoding="utf-8") as f:
             text = f.read()
@@ -68,13 +101,31 @@ def ensure_conf(active):
             return
         log.info("airplay : shairport-sync.conf corrige (AirPlay 1, metadonnees UDP)")
         _pending_restart[0] = True
-    if _pending_restart[0] and active() != "airplay":
+    if _pending_restart[0] and (now or active() != "airplay"):
         _pending_restart[0] = False
-        log.info("airplay : relance du recepteur AirPlay")
+        log.info("airplay : relance du recepteur AirPlay (AirPlay %d)", _version[0])
+        if _version[0] == 2:                     # AirPlay 2 : horloge commune nqptp
+            subprocess.run(["systemctl", "start", "nqptp"], capture_output=True, timeout=20)
         try:
             subprocess.run(["moodeutl", "-R", "--airplay"], capture_output=True, timeout=30)
         except subprocess.SubprocessError as e:
             log.warning("moodeutl -R --airplay : %s", e)
+
+
+def set_version(v, active):
+    """Choix AirPlay 1/2 depuis la page Settings : enregistre et applique tout de suite."""
+    if v not in (1, 2):
+        return False
+    _version[0] = v
+    try:
+        os.makedirs(os.path.dirname(SETTINGS), exist_ok=True)
+        with open(SETTINGS, "w", encoding="utf-8") as f:
+            json.dump({"version": v}, f)
+    except OSError as e:
+        log.warning("airplay : %s : %s", SETTINGS, e)
+    log.info("airplay : AirPlay %d choisi", v)
+    ensure_conf(active, now=True)
+    return True
 
 
 # --- metadonnees UDP --------------------------------------------------------------

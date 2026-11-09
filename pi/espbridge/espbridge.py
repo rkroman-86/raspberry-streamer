@@ -14,6 +14,7 @@ ESP -> Pi (commande -> réponse)
   PLAY <url>            -> OK PLAY    | ERR PLAY
   PLAY                  -> OK RESUME  | ERR PLAY
   STATION <json>        -> (pas de reponse) station de /ui ajoutee a la bibliotheque moOde
+  AIRPLAY 1|2           -> OK AIRPLAY n : recepteur AirPlay 1 (vieux appareils) ou 2
   STOP                  -> OK STOP
   PAUSE                 -> OK PAUSE
   VOL <0-100>           -> OK VOL <n> | ERR VOL
@@ -35,6 +36,7 @@ import logging
 import re
 import sqlite3
 import subprocess
+import threading
 import time
 
 import serial
@@ -622,6 +624,7 @@ _build_status_ap = build_status
 def build_status(ip):
     """Ajoute le volume AirPlay (celui de l'appareil source, MPD ne le connait pas)."""
     st = _build_status_ap(ip)
+    st["airplay"] = airplay.get_version()      # 1 ou 2, affiche dans la page Settings de l'ESP
     if st.get("source") == "airplay":
         v = airplay.get_volume()
         if v is not None:
@@ -881,6 +884,14 @@ class Bridge:
 
         elif cmd == "VOL" and bt_set_volume(arg):    # Bluetooth : volume bluez-alsa
             self.send("OK VOL " + arg)
+
+        elif cmd == "AIRPLAY":                 # page Settings de l'ESP : AirPlay 1 ou 2
+            if arg in ("1", "2"):
+                threading.Thread(target=airplay.set_version, args=(int(arg), active_renderer),
+                                 daemon=True).start()
+                self.send("OK AIRPLAY " + arg)
+            else:
+                self.send("ERR AIRPLAY")
 
         elif cmd == "VOL" and active_renderer() == "airplay" and arg.isdigit() and int(arg) <= 100:
             ok = airplay.set_volume(int(arg))          # AirPlay : volume de l'appareil source

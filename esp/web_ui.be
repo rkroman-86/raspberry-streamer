@@ -1,6 +1,6 @@
 # web_ui.be — pages web de l'ESP (accessibles depuis le téléphone)
 #
-#   http://<ip-esp>/wsync    Wi-Fi : réseau commun ESP + streamer
+#   http://<ip-esp>/wsync    Wi-Fi : réseau commun ESP + streamer ; AirPlay 1 ou 2
 #   http://<ip-esp>/player   Lecteur (squelette : affiche la lecture en cours,
 #                            les commandes viendront plus tard)
 #
@@ -14,6 +14,7 @@ import persist
 
 class WebUI
   var status       # dernier STATUS reçu du Pi (map), pour /player
+  var ap_wanted    # version AirPlay demandee, en attente de confirmation par le Pi
 
   static STATE_LABEL = {
     "idle":    "Waiting",
@@ -34,6 +35,7 @@ class WebUI
 
   def init()
     self.status = nil
+    self.ap_wanted = nil
     tasmota.add_driver(self)
     # Tasmota appelle web_add_handler() au démarrage du serveur web ; l'appel
     # manuel ne sert que si le serveur tourne déjà (chargement depuis la console)
@@ -56,6 +58,7 @@ class WebUI
   def web_add_handler()
     webserver.on("/wsync",  / -> self.page_wsync(), webserver.HTTP_GET)
     webserver.on("/wsync",  / -> self.post_wsync(), webserver.HTTP_POST)
+    webserver.on("/airplay", / -> self.post_airplay(), webserver.HTTP_POST)
     webserver.on("/player", / -> self.page_player())
   end
 
@@ -87,7 +90,7 @@ class WebUI
   def page_wsync()
     if !webserver.check_privileged_access() return nil end
     var ws = global.wifisync
-    webserver.content_start("Streamer Wi-Fi")
+    webserver.content_start("Settings")
     webserver.content_send_style()
     var busy = self.BUSY.find(ws.state) != nil
     if busy
@@ -107,6 +110,8 @@ class WebUI
     end
     webserver.content_send("</fieldset><br>")
 
+    self.airplay_box()
+
     if busy                                  # pas de formulaire pendant un changement
       webserver.content_button(webserver.BUTTON_CONFIGURATION)
       webserver.content_stop()
@@ -123,6 +128,42 @@ class WebUI
 
     webserver.content_button(webserver.BUTTON_CONFIGURATION)
     webserver.content_stop()
+  end
+
+  # ---------- AirPlay 1 / 2 ----------
+  def airplay_box()
+    var cur = self.status != nil ? self.status.find("airplay") : nil
+    if self.ap_wanted != nil && cur == self.ap_wanted  self.ap_wanted = nil  end
+    webserver.content_send("<fieldset><legend><b>&nbsp;AirPlay&nbsp;</b></legend>"
+      "<form method='post' action='/airplay'>")
+    if cur == nil
+      webserver.content_send("<p>Waiting for streamer...</p>")
+    else
+      for v : [2, 1]
+        var lbl = v == 2 ? "AirPlay 2 <span style='font-size:smaller'>(recommended)</span>"
+                         : "AirPlay 1 <span style='font-size:smaller'>(older iPhone / iPad: no sound in AirPlay 2)</span>"
+        webserver.content_send(string.format("<p><label><input type='radio' name='v' value='%d'%s> %s</label></p>",
+                                      v, v == cur ? " checked" : "", lbl))
+      end
+      if self.ap_wanted != nil
+        webserver.content_send("<meta http-equiv='refresh' content='3;url=/wsync'>"
+          "<p style='font-size:smaller'>Restarting AirPlay...</p>")
+      else
+        webserver.content_send("<p style='font-size:smaller'>Changing restarts AirPlay: reconnect your device.</p>")
+      end
+      webserver.content_send("<button type='submit' class='button bgrn'>Save</button>")
+    end
+    webserver.content_send("</form></fieldset><br>")
+  end
+
+  def post_airplay()
+    if !webserver.check_privileged_access() return nil end
+    var v = webserver.arg("v")
+    if v == "1" || v == "2"
+      self.ap_wanted = int(v)
+      global.pi("AIRPLAY " + v)
+    end
+    webserver.redirect("/wsync")
   end
 
   def post_wsync()
