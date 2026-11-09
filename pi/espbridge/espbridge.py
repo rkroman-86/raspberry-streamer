@@ -43,6 +43,7 @@ from bootgauge import uptime, boot_expected, boot_save, BOOT_POLL
 import mpdfix
 import dlna
 import moode_radio
+import airplay
 
 PORT = "/dev/serial0"
 BAUD = 115200
@@ -615,6 +616,19 @@ def build_status(ip):
     return st
 
 
+_build_status_ap = build_status
+
+
+def build_status(ip):
+    """Ajoute le volume AirPlay (celui de l'appareil source, MPD ne le connait pas)."""
+    st = _build_status_ap(ip)
+    if st.get("source") == "airplay":
+        v = airplay.get_volume()
+        if v is not None:
+            st["vol"] = v
+    return st
+
+
 _build_status_vol = build_status
 
 
@@ -868,6 +882,11 @@ class Bridge:
         elif cmd == "VOL" and bt_set_volume(arg):    # Bluetooth : volume bluez-alsa
             self.send("OK VOL " + arg)
 
+        elif cmd == "VOL" and active_renderer() == "airplay" and arg.isdigit() and int(arg) <= 100:
+            ok = airplay.set_volume(int(arg))          # AirPlay : volume de l'appareil source
+            self.send(("OK VOL " if ok else "ERR VOL ") + arg)
+            self.send_status(force=True)
+
         elif cmd == "VOL":
             if arg.isdigit() and 0 <= int(arg) <= 100 and mpc("volume", arg) is not None:
                 self.send("OK VOL " + arg)
@@ -884,6 +903,7 @@ class Bridge:
 def main():
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     mpdfix.start()                   # reglages MPD que moOde efface (decodeur mpg123)
+    airplay.start(active_renderer)   # AirPlay 1 + volume AirPlay (metadonnees UDP, DACP)
     try:
         dlna.start()                 # serveurs DLNA du reseau : API HTTP pour la page /ui
     except OSError as e:

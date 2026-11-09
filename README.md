@@ -31,6 +31,11 @@ the ESP sends `STATION <json>` after `PLAY`, the Pi saves the Radio Browser logo
 `radio-logos/` and calls moOde's own `new_station` command. moOde and the ESP screen then
 show the logo. Stations already in moOde (same URL) are left untouched.
 
+AirPlay (`pi/espbridge/airplay.py`): shairport-sync is kept in AirPlay 1 (`service_type =
+"classic"`, old iPads get no audio in AirPlay 2) and also sends its metadata over UDP
+(127.0.0.1:5556). The Pi reads the source's volume from it and the screen slider sets it back
+on the source device with a DACP command, like Bluetooth.
+
 ## DLNA
 
 - **Receiver**: moOde's UPnP renderer (upmpdcli) is on, named `TasmoOde Receiver`.
