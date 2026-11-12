@@ -77,8 +77,9 @@ The full step-by-step guide is in **[docs/INSTALL.md](docs/INSTALL.md)**:
 ## Roadmap
 
 - 3D-printed enclosure
-- Power amplifier stage: a buck converter to feed the boards and the amp from one supply, and a relay that
-  cuts the amp's power when the system goes to standby (this stage will need some soldering)
+- Power amplifier stage (TPA3116D2 class-D board): a single 15 V+ supply feeds the amp directly, a 5 V buck
+  converter feeds the Pi and the screen, and a relay cuts the amp's power when the system goes to standby
+  (this stage will need some soldering)
 - Low-power standby for the Pi
 - Bluetooth pairing code shown on the screen
 - External audio input

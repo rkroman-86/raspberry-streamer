@@ -44,10 +44,13 @@ soldered, otherwise solder the headers first.
 | GPIO14 / TXD (pin 8) | GPIO20 (RX) | Pi → ESP |
 | GPIO15 / RXD (pin 10) | GPIO19 (TX) | ESP → Pi |
 | GND (pin 6) | GND | common ground |
-| 5V (pin 2) | 5V | power: the whole streamer is powered from the screen's USB-C |
+| 5V (pin 2) | 5V | power: in the current build, the whole streamer is powered from the screen's USB-C |
 
 Both sides use 3.3 V logic: connect them directly, no level shifter needed. The ESP pins are set
 in [`esp/pizero_uart.be`](../esp/pizero_uart.be) (`serial(20, 19, 115200)`). Change them there if you wire differently.
+
+> Power: the current build is line-out only and runs from 5 V USB-C. With the planned power amplifier
+> (TPA3116D2), the supply becomes 15 V or more for the amp, with a 5 V buck converter for the Pi and the screen.
 
 ### Pi ⇄ PCM5102 DAC (I2S)
 
