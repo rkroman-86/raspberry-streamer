@@ -1,77 +1,93 @@
 # Raspberry Streamer
 
-Audio streamer: Raspberry Pi Zero 2 W running moOde (+ PCM5102 DAC) driven by a
-Waveshare ESP32-S3 touch screen running Tasmota / Berry / HASPmota, linked by UART.
+**A touch-screen network audio streamer built from three off-the-shelf boards:**
+a Raspberry Pi Zero 2 W running [moOde audio](https://moodeaudio.org), a PCM5102 I2S DAC,
+and a Waveshare ESP32-S3 touch display running [Tasmota](https://tasmota.github.io) / Berry / HASPmota.
+Your phone becomes the main remote, through a web app served by the ESP32 itself.
 
-## Layout
+<p align="center">
+  <img src="docs/images/hardware.jpg" width="560" alt="ESP32-S3 touch screen, Raspberry Pi Zero 2 W and PCM5102 DAC wired together">
+</p>
 
-| Folder   | Content                                                              |
-|----------|----------------------------------------------------------------------|
-| `esp/`   | Mirror of the Tasmota filesystem (`*.be`, `pages.jsonl`, `A/*.png`)  |
-| `esp/ui/`| Phone web page `http://192.168.1.75/ui` (AndroRadio look): `ui.be` driver + HTML/CSS/JS |
-| `pi/`    | Pi side: `espbridge.py` (`/opt/espbridge/`) and its systemd service  |
-| `tools/` | `tasmota_sync.py`: push / pull files, run commands, read the log     |
-| `docs/`  | Notes, protocol, wiring                                              |
+> Status: working prototype, no enclosure yet. A few short wires, a few solder joints, no custom PCB.
 
-## Device
+## Features
 
-- ESP32-S3 (Tasmota): `192.168.1.75`
-- Raspberry Pi Zero 2 W (moOde): `rk@192.168.1.35`, code in `/opt/espbridge`, service `espbridge`
+- 📻 **Web radio**: 50,000+ stations from [Radio Browser](https://www.radio-browser.info). Search, local stations, favorites (20), history, and an "Around the world" tuner by continent, country and city.
+- 🎵 **Spotify Connect, AirPlay (1 or 2), Bluetooth and DLNA/UPnP**: all moOde renderers, switched from the screen or the phone. Track info is shown when the source sends it.
+- 🗂️ **DLNA browser**: find the media servers on your network, browse folders and play from any track. Loop, shuffle and single-track modes.
+- 🖐️ **Touch screen (240×320)**: cover art, the last 3 stations, source picker, volume, boot progress gauge, Wi-Fi status.
+- 📱 **Phone web app** at `http://<esp-ip>/ui`, no app to install. Track art comes from MusicBrainz, Cover Art Archive or iTunes.
+- 🔊 **One volume everywhere**: the screen slider also drives the source device's volume (AirPlay via DACP, Bluetooth).
+- 🔁 **moOde library sync**: stations played from the phone are added to moOde's Radio library, logo included.
+- 📶 **Wi-Fi sync**: the Pi joins the ESP's Wi-Fi network automatically. Wi-Fi is set up once, in Tasmota.
 
-## Web page `/ui`
+## Screenshots
 
-`esp/ui/ui.be` is a Berry driver loaded at the end of `main_prog.be`. It serves the
-files of the `/ui` folder and a small JSON API (`/ui/api?a=state|lib|play|toggle|stop|vol|src|fsave|fdel|fmove`).
-The phone's browser does the heavy work (Radio Browser search, local stations, tuner,
-album art from MusicBrainz / Cover Art Archive / iTunes). Favorites (20) and history (10)
-live on the ESP in `/ui/library.json` (never pushed or pulled by `tasmota_sync.py`).
+| Phone: now playing | Phone: source | Phone: around the world | Touch screen: source |
+|---|---|---|---|
+| <img src="docs/images/phone-home.jpg" width="180"> | <img src="docs/images/phone-sources.jpg" width="180"> | <img src="docs/images/phone-geo.jpg" width="180"> | <img src="docs/images/screen-sources.jpg" width="180"> |
 
-Stations played from `/ui` are added to moOde's Radio library (`pi/espbridge/moode_radio.py`):
-the ESP sends `STATION <json>` after `PLAY`, the Pi saves the Radio Browser logo in
-`radio-logos/` and calls moOde's own `new_station` command. moOde and the ESP screen then
-show the logo. Stations already in moOde (same URL) are left untouched.
+## How it works
 
-AirPlay (`pi/espbridge/airplay.py`): AirPlay 2 (default) or AirPlay 1 is chosen on the ESP
-Settings page (`/wsync`, command `AIRPLAY 1|2`; old iPads get no audio in AirPlay 2). The Pi
-keeps `service_type` in shairport-sync.conf accordingly and also sends its metadata over UDP
-(127.0.0.1:5556). The Pi reads the source's volume from it and the screen slider sets it back
-on the source device with a DACP command, like Bluetooth.
-
-## DLNA
-
-- **Receiver**: moOde's UPnP renderer (upmpdcli) is on, named `TasmoOde Receiver`.
-  `pi/espbridge/mpdfix.py` keeps MPD's mpg123 decoder disabled (Windows casts a
-  non-seekable transcoded stream that mpg123 cannot play).
-- **Browsing**: `pi/espbridge/dlna.py` finds the media servers (SSDP), browses their
-  folders and queues a folder in MPD from the chosen track. HTTP API on port 8091
-  (`/dlna/servers|browse|play|mode|next|prev|state`, CORS open) used by the `/ui` page.
-  Play modes: `loop_all` (default), `all_once`, `random`, `one_loop`, `one_once`.
-
-## Workflow
-
-Code lives on GitHub. The always-on PC on the LAN holds a clone and deploys to the devices.
-
-```sh
-git pull
-python tools/tasmota_sync.py push        # upload changed files in esp/
-python tools/tasmota_sync.py cmd "Restart 1"
-python tools/tasmota_sync.py log
+```
+ Phone (browser)                 Waveshare ESP32-S3 touch LCD 2"           Raspberry Pi Zero 2 W
+ ┌──────────────┐  HTTP /ui     ┌──────────────────────────────┐  UART    ┌───────────────────────┐  I2S   ┌─────────┐
+ │  web app     │ ────────────▶ │ Tasmota + Berry + HASPmota   │ ◀──────▶ │ moOde (MPD, shairport,│ ─────▶ │ PCM5102 │──▶ amp / headphones
+ │  (Radio      │               │ touch UI, web server, API    │ 115200   │ librespot, bluealsa,  │        │  DAC    │
+ │   Browser)   │ ──── DLNA API (port 8091) ─────────────────────────────▶ │ upmpdcli) + espbridge │        └─────────┘
+ └──────────────┘                └──────────────────────────────┘          └───────────────────────┘
 ```
 
-Pi side (SSH key + passwordless sudo required):
+- **ESP32-S3**: the user interface and the "brain" of the remote. It runs the touch UI (HASPmota), serves the phone web app and talks to the Pi over a serial link.
+- **Raspberry Pi**: plays the audio. moOde handles every source. A small Python service, `espbridge`, translates serial commands (`PLAY`, `VOL`, `STOP`…) into moOde/MPD actions and reports playback status back to the screen.
 
-```sh
-python tools/pi_sync.py push     # copy pi/espbridge/*.py (+ service), restart espbridge
-python tools/pi_sync.py log      # espbridge journal
-python tools/pi_sync.py status
-```
+## Hardware
 
-First import from the device into the repo:
+| Part | Notes | Approx. price |
+|---|---|---|
+| Raspberry Pi Zero 2 W | with a soldered GPIO header | ~€20 |
+| PCM5102A I2S DAC board ("GY-PCM5102") | line out, 3.5 mm jack | ~€5 |
+| Waveshare ESP32-S3-Touch-LCD-2 | 2" 240×320 capacitive touch, PSRAM | ~€20 |
+| microSD card (8 GB+), USB-C power supply 5 V / 2 A, Dupont wires | | |
 
-```sh
-python tools/tasmota_sync.py pull
-git add esp && git commit -m "Import current ESP files" && git push
-```
+Wiring takes about 10 wires. See [docs/INSTALL.md](docs/INSTALL.md#2-wiring).
 
-If the Tasmota web UI has a password, set it in the environment first
-(`TASMOTA_PASSWORD`, user is always `admin`). Never commit it.
+## Getting started
+
+The full step-by-step guide is in **[docs/INSTALL.md](docs/INSTALL.md)**:
+
+1. Flash moOde with Raspberry Pi Imager (**set the username, password and SSH there**)
+2. Wire the DAC and the serial link
+3. Configure moOde: DAC, **install AirPlay and Spotify** (not installed by default), enable the renderers
+4. Install the `espbridge` service on the Pi
+5. Flash Tasmota (LVGL build) on the ESP32-S3 and upload the `esp/` files
+6. Open `http://<esp-ip>/ui` on your phone
+
+## Repository layout
+
+| Folder | Content |
+|---|---|
+| `esp/` | Tasmota filesystem: Berry scripts (`*.be`), HASPmota layout (`pages.jsonl`), display config, icons (`A/`) |
+| `esp/ui/` | Phone web app (`/ui`): HTML/CSS/JS + its Berry driver `ui.be` |
+| `pi/` | `espbridge` Python service (`/opt/espbridge`) and its systemd unit |
+| `tools/` | `tasmota_sync.py` and `pi_sync.py`: deploy from a PC, read logs |
+| `docs/` | Installation guide, [serial protocol and development notes](docs/DEVELOPMENT.md), images |
+
+## Roadmap
+
+- 3D-printed enclosure
+- Power amplifier stage, controlled by a GPIO (power off with the stop button)
+- Low-power standby for the Pi
+- Bluetooth pairing code shown on the screen
+- External audio input
+
+## Credits
+
+Built on [moOde audio](https://moodeaudio.org), [Tasmota](https://github.com/arendst/Tasmota) (Berry, LVGL, HASPmota)
+and the [Radio Browser](https://www.radio-browser.info) community database.
+Station logos shown in the screenshots belong to their respective owners.
+
+## License
+
+[MIT](LICENSE)
