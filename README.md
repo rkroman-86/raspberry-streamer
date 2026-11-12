@@ -9,7 +9,7 @@ Your phone becomes the main remote, through a web app served by the ESP32 itself
   <img src="docs/images/hardware.jpg" width="560" alt="ESP32-S3 touch screen, Raspberry Pi Zero 2 W and PCM5102 DAC wired together">
 </p>
 
-> Status: working prototype, no enclosure yet. A few short wires, a few solder joints, no custom PCB.
+> Status: working prototype, no enclosure yet. About ten Dupont wires, **no soldering** (with pre-soldered headers), no custom PCB.
 
 ## Features
 
@@ -46,8 +46,8 @@ Your phone becomes the main remote, through a web app served by the ESP32 itself
 
 | Part | Notes | Approx. price |
 |---|---|---|
-| Raspberry Pi Zero 2 W | with a soldered GPIO header | ~€20 |
-| PCM5102A I2S DAC board ("GY-PCM5102") | line out, 3.5 mm jack | ~€5 |
+| Raspberry Pi Zero 2 WH | "WH" = GPIO header pre-soldered | ~€20 |
+| PCM5102A I2S DAC board | line out, 3.5 mm jack, pins soldered | ~€5 |
 | Waveshare ESP32-S3-Touch-LCD-2 | 2" 240×320 capacitive touch, PSRAM | ~€20 |
 | microSD card (8 GB+), USB-C power supply 5 V / 2 A, Dupont wires | | |
 
@@ -77,7 +77,8 @@ The full step-by-step guide is in **[docs/INSTALL.md](docs/INSTALL.md)**:
 ## Roadmap
 
 - 3D-printed enclosure
-- Power amplifier stage, controlled by a GPIO (power off with the stop button)
+- Power amplifier stage: a buck converter to feed the boards and the amp from one supply, and a relay that
+  cuts the amp's power when the system goes to standby (this stage will need some soldering)
 - Low-power standby for the Pi
 - Bluetooth pairing code shown on the screen
 - External audio input

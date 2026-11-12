@@ -1,7 +1,8 @@
 # Installation guide
 
-About one hour from a blank SD card to music. You need a computer on the same network,
-a soldering iron, and the parts listed in the [README](../README.md#hardware).
+About one hour from a blank SD card to music. You need a computer on the same network
+and the parts listed in the [README](../README.md#hardware). **No soldering** if the Pi and the DAC
+come with their pin headers already soldered.
 
 1. [Flash moOde on the Pi](#1-flash-moode-on-the-pi)
 2. [Wiring](#2-wiring)
@@ -33,11 +34,8 @@ Use **[Raspberry Pi Imager](https://www.raspberrypi.com/software/)**:
 
 ## 2. Wiring
 
-Some soldering is needed:
-
-- the GPIO header on the Pi Zero 2 W (skip if you bought the "WH" version with a header),
-- the pin header on the PCM5102 board,
-- the configuration pads on the back of the PCM5102 board (see below).
+Dupont wires only. Buy the Pi Zero 2 **WH** (header pre-soldered) and a PCM5102 board with its pins
+soldered, otherwise solder the headers first.
 
 ### Pi ⇄ ESP32-S3 (serial link)
 
@@ -60,11 +58,8 @@ in [`esp/pizero_uart.be`](../esp/pizero_uart.be) (`serial(20, 19, 115200)`). Cha
 | GPIO18 / PCM_CLK (pin 12) | BCK |
 | GPIO19 / PCM_FS (pin 35) | LCK (LRCK) |
 | GPIO21 / PCM_DOUT (pin 40) | DIN |
-| GND | SCK (no master clock: the DAC makes its own) |
 
-On the back of the common purple "GY-PCM5102" board, bridge the solder pads like this:
-**1 → L** (FLT, normal filter), **2 → L** (DEMP off), **3 → H** (XSMT, un-mute), **4 → L** (FMT, I2S).
-Without pad 3 on H, the DAC stays muted.
+SCK is not connected: the DAC generates its own clock. Nothing to configure on the DAC board.
 
 <p align="center"><img src="images/hardware.jpg" width="520" alt="Wiring of the prototype"></p>
 
@@ -155,7 +150,7 @@ Logs: `sudo journalctl -u espbridge -f`.
 |---|---|
 | Screen stuck on the boot gauge | `systemctl status espbridge` on the Pi. TX/RX swapped? Is the serial console still enabled (step 4)? |
 | `ssh: Permission denied` | Use the username/password set in Imager (step 1.3). If unknown, reflash. |
-| No sound | Output device in moOde (step 3.1), PCM5102 pad 3 on **H**, SCK to GND. |
+| No sound | Output device in moOde (step 3.1), I2S wires BCK / LCK / DIN, DAC powered (VIN, GND). |
 | Streamer not listed in Spotify / AirPlay on the phone | Install the renderers in moOde (step 3.2) and turn them on. Spotify Connect needs Premium. |
 | Old iPad gets no AirPlay audio | Set AirPlay 1 at `http://<esp-ip>/wsync`. |
 | ESP console | `python tools/tasmota_sync.py --host <esp-ip> log -f` |
