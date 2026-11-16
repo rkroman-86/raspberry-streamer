@@ -621,6 +621,32 @@ def build_status(ip):
     return st
 
 
+_svc_jobs = []
+_svc_cv = threading.Condition()
+
+
+def _svc_worker():
+    while True:
+        with _svc_cv:
+            while not _svc_jobs:
+                _svc_cv.wait()
+            job = _svc_jobs.pop(0)
+        try:
+            job()
+        except Exception:
+            log.exception("changement de service")
+
+
+def svc_queue(job):
+    """Changements de services (Settings de l'ESP) faits l'un apres l'autre :
+    le worker de moOde n'accepte qu'une tache a la fois."""
+    with _svc_cv:
+        _svc_jobs.append(job)
+        _svc_cv.notify()
+
+
+threading.Thread(target=_svc_worker, daemon=True).start()
+
 _build_status_ap = build_status
 _own_ip = {"ip": "", "t": 0.0}
 
@@ -908,14 +934,14 @@ class Bridge:
                 def run(name=p[0], on=p[1] == "1"):
                     ok = services.set_service(name, on)
                     self.send(("OK SVC " if ok else "ERR SVC ") + arg)
-                threading.Thread(target=run, daemon=True).start()
+                svc_queue(run)
             else:
                 self.send("ERR SVC")
 
         elif cmd == "AIRPLAY":                 # page Settings de l'ESP : AirPlay 1 ou 2
             if arg in ("1", "2"):
-                threading.Thread(target=airplay.set_version, args=(int(arg), active_renderer),
-                                 daemon=True).start()
+                svc_queue(lambda v=int(arg): (airplay.set_version(v, active_renderer),
+                                              services._wait_idle(30)))
                 self.send("OK AIRPLAY " + arg)
             else:
                 self.send("ERR AIRPLAY")
