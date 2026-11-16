@@ -154,7 +154,7 @@ class WebUI
       if cur != nil && cur["ap"] == self.ap_wanted["ap"] && cur["sp"] == self.ap_wanted["sp"] &&
          cur["bt"] == self.ap_wanted["bt"]
         self.ap_wanted = nil
-      elif tasmota.millis() - self.ap_wanted["ms"] > 30000
+      elif tasmota.millis() - self.ap_wanted["ms"] > 90000
         self.ap_wanted = nil                     # pas de confirmation : on reaffiche l'etat reel
       end
     end
