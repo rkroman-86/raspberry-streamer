@@ -466,11 +466,50 @@ end
 
 # p0b19 (voile opaque) contient le panneau p0b20 : un seul objet a montrer / cacher,
 # et rien a redessiner dessous (pochette agrandie) -> affichage d'un coup
+# Services coupes dans Settings (AirPlay, Spotify, Bluetooth) : leur tuile disparait,
+# les autres tuiles et la tuile reglages se resserrent dans la grille 3 x 2
+var svc_state = {}          # dernier "svc" du STATUS : {"airplay": 0|1, ...}
+var tiles_key = ""
+var SLOT_X = [6, 84, 162]
+var SLOT_Y = [40, 118]
+def tiles_layout()
+  var shown = []
+  for i : 0..size(SOURCES)-1
+    var src = SOURCES[i]
+    if RENDERERS.find(src) == nil || svc_state.find(src, 1) == 1  shown.push(i)  end
+  end
+  var key = str(shown)
+  if key == tiles_key  return  end
+  tiles_key = key
+  for i : 0..size(SOURCES)-1
+    var b = global.("p0b" + str(31 + i))
+    var im = global.("p0b" + str(41 + i))
+    var k = shown.find(i)
+    if b != nil && im != nil
+      b.hidden = (k == nil)
+      im.hidden = (k == nil)
+      if k != nil
+        b.x = SLOT_X[k % 3]  b.y = SLOT_Y[k / 3]
+        im.x = SLOT_X[k % 3] - 4  im.y = SLOT_Y[k / 3] - 4
+      end
+    end
+  end
+  var k = size(shown)                            # tuile reglages juste apres
+  var sb = global.p0b36
+  var si = global.p0b46
+  if sb != nil && si != nil
+    sb.x = SLOT_X[k % 3]  sb.y = SLOT_Y[k / 3]
+    si.x = SLOT_X[k % 3] + 12  si.y = SLOT_Y[k / 3] + 12
+  end
+end
+
 def popup_show(visible)
   var v = global.p0b19
   if v == nil || v.hidden == !visible  return  end
+  if visible  tiles_layout()  end
   v.hidden = !visible
 end
+
 
 # Pi sans Wi-Fi (WIFI_NONE) ou sans internet stable (NET_KO) : image "Wi-Fi barre"
 # (p0b7, page 0) a la place de la pochette, sauf en Bluetooth qui n'a pas besoin du reseau
@@ -574,6 +613,8 @@ on_status = def (st)
   if global.p1b2 != nil  update_cover(st)  end
   update_volume(st)
   update_track(st)
+  var sv = st.find("svc")
+  if sv != nil  svc_state = sv  tiles_layout()  end
   var md = st.find("mode")
   if md != nil && md != play_mode
     play_mode = md

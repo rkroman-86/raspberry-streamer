@@ -84,6 +84,15 @@ def ensure_conf(active, now=False):
         _ensure_conf(active, now)
 
 
+def _svc_on():
+    """AirPlay active dans moOde ?"""
+    try:
+        import services
+        return services.is_on("airplay")
+    except Exception:
+        return True
+
+
 def _ensure_conf(active, now):
     try:
         with open(CONF, encoding="utf-8") as f:
@@ -101,6 +110,8 @@ def _ensure_conf(active, now):
             return
         log.info("airplay : shairport-sync.conf corrige (AirPlay 1, metadonnees UDP)")
         _pending_restart[0] = True
+    if _pending_restart[0] and not _svc_on():
+        _pending_restart[0] = False              # AirPlay coupe : le reglage servira au prochain demarrage
     if _pending_restart[0] and (now or active() != "airplay"):
         _pending_restart[0] = False
         log.info("airplay : relance du recepteur AirPlay (AirPlay %d)", _version[0])

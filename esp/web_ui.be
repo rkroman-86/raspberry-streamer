@@ -1,6 +1,6 @@
 # web_ui.be — pages web de l'ESP (accessibles depuis le téléphone)
 #
-#   http://<ip-esp>/wsync    Wi-Fi : réseau commun ESP + streamer ; AirPlay 1 ou 2
+#   http://<ip-esp>/wsync    Wi-Fi : réseau commun ESP + streamer ; services AirPlay / Spotify / Bluetooth
 #   http://<ip-esp>/player   Lecteur (squelette : affiche la lecture en cours,
 #                            les commandes viendront plus tard)
 #
@@ -14,7 +14,7 @@ import persist
 
 class WebUI
   var status       # dernier STATUS reçu du Pi (map), pour /player
-  var ap_wanted    # version AirPlay demandee, en attente de confirmation par le Pi
+  var ap_wanted    # reglages Services demandes, en attente de confirmation par le Pi
 
   static STATE_LABEL = {
     "idle":    "Waiting",
@@ -58,7 +58,7 @@ class WebUI
   def web_add_handler()
     webserver.on("/wsync",  / -> self.page_wsync(), webserver.HTTP_GET)
     webserver.on("/wsync",  / -> self.post_wsync(), webserver.HTTP_POST)
-    webserver.on("/airplay", / -> self.post_airplay(), webserver.HTTP_POST)
+    webserver.on("/services", / -> self.post_services(), webserver.HTTP_POST)
     webserver.on("/player", / -> self.page_player())
   end
 
@@ -114,7 +114,7 @@ class WebUI
     end
     webserver.content_send("</fieldset><br>")
 
-    self.airplay_box()
+    self.services_box()
 
     if busy                                  # pas de formulaire pendant un changement
       webserver.content_button(webserver.BUTTON_CONFIGURATION)
@@ -134,38 +134,76 @@ class WebUI
     webserver.content_stop()
   end
 
-  # ---------- AirPlay 1 / 2 ----------
-  def airplay_box()
-    var cur = self.status != nil ? self.status.find("airplay") : nil
-    if self.ap_wanted != nil && cur == self.ap_wanted  self.ap_wanted = nil  end
-    webserver.content_send("<fieldset><legend><b>&nbsp;AirPlay&nbsp;</b></legend>"
-      "<form method='post' action='/airplay'>")
+  # ---------- Services : AirPlay (off / 2 / 1), Spotify, Bluetooth ----------
+  def svc_now()
+    var st = self.status
+    if st == nil || st.find("svc") == nil  return nil  end
+    var sv = st["svc"]
+    var ap = sv.find("airplay", 0) == 1 ? str(st.find("airplay", 2)) : "off"
+    return {"ap": ap, "sp": str(sv.find("spotify", 0)), "bt": str(sv.find("bluetooth", 0))}
+  end
+
+  def radio(name, val, cur, label)
+    webserver.content_send(string.format("<p><label><input type='radio' name='%s' value='%s'%s> %s</label></p>",
+                                         name, val, val == cur ? " checked" : "", label))
+  end
+
+  def services_box()
+    var cur = self.svc_now()
+    if self.ap_wanted != nil
+      if cur != nil && cur["ap"] == self.ap_wanted["ap"] && cur["sp"] == self.ap_wanted["sp"] &&
+         cur["bt"] == self.ap_wanted["bt"]
+        self.ap_wanted = nil
+      elif tasmota.millis() - self.ap_wanted["ms"] > 30000
+        self.ap_wanted = nil                     # pas de confirmation : on reaffiche l'etat reel
+      end
+    end
+    webserver.content_send("<fieldset><legend><b>&nbsp;Services&nbsp;</b></legend>"
+      "<form method='post' action='/services'>")
     if cur == nil
       webserver.content_send("<p>Waiting for streamer...</p>")
     else
-      for v : [2, 1]
-        var lbl = v == 2 ? "AirPlay 2 <span style='font-size:smaller'>(recommended)</span>"
-                         : "AirPlay 1 <span style='font-size:smaller'>(older iPhone / iPad: no sound in AirPlay 2)</span>"
-        webserver.content_send(string.format("<p><label><input type='radio' name='v' value='%d'%s> %s</label></p>",
-                                      v, v == cur ? " checked" : "", lbl))
-      end
+      var sm = "<span style='font-size:smaller'>"
+      webserver.content_send("<p><b>AirPlay</b></p>")
+      self.radio("ap", "2", cur["ap"], "AirPlay 2 " + sm + "(recommended)</span>")
+      self.radio("ap", "1", cur["ap"], "AirPlay 1 " + sm + "(older iPhone / iPad: no sound in AirPlay 2)</span>")
+      self.radio("ap", "off", cur["ap"], "Off")
+      webserver.content_send("<p><b>Spotify Connect</b></p>")
+      self.radio("sp", "1", cur["sp"], "On")
+      self.radio("sp", "0", cur["sp"], "Off")
+      webserver.content_send("<p><b>Bluetooth</b></p>")
+      self.radio("bt", "1", cur["bt"], "On")
+      self.radio("bt", "0", cur["bt"], "Off")
       if self.ap_wanted != nil
         webserver.content_send("<meta http-equiv='refresh' content='3;url=/wsync'>"
-          "<p style='font-size:smaller'>Restarting AirPlay...</p>")
+          "<p style='font-size:smaller'>Applying...</p>")
       else
-        webserver.content_send("<p style='font-size:smaller'>Changing restarts AirPlay: reconnect your device.</p>")
+        webserver.content_send("<p style='font-size:smaller'>A service set to Off disappears from the source list. "
+          "Changing AirPlay restarts it: reconnect your device.</p>")
       end
       webserver.content_send("<button type='submit' class='button bgrn'>Save</button>")
     end
     webserver.content_send("</form></fieldset><br>")
   end
 
-  def post_airplay()
+  def post_services()
     if !webserver.check_privileged_access() return nil end
-    var v = webserver.arg("v")
-    if v == "1" || v == "2"
-      self.ap_wanted = int(v)
-      global.pi("AIRPLAY " + v)
+    var cur = self.svc_now()
+    var ap = webserver.arg("ap")
+    var sp = webserver.arg("sp")
+    var bt = webserver.arg("bt")
+    if cur != nil && (ap == "off" || ap == "1" || ap == "2") && (sp == "0" || sp == "1") && (bt == "0" || bt == "1")
+      if ap != cur["ap"]
+        if ap == "off"
+          global.pi("SVC airplay 0")
+        else
+          if self.status.find("airplay", 2) != int(ap)  global.pi("AIRPLAY " + ap)  end
+          if cur["ap"] == "off"  global.pi("SVC airplay 1")  end
+        end
+      end
+      if sp != cur["sp"]  global.pi("SVC spotify " + sp)  end
+      if bt != cur["bt"]  global.pi("SVC bluetooth " + bt)  end
+      self.ap_wanted = {"ap": ap, "sp": sp, "bt": bt, "ms": tasmota.millis()}
     end
     webserver.redirect("/wsync")
   end

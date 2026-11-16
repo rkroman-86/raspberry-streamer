@@ -15,6 +15,7 @@ ESP -> Pi (commande -> réponse)
   PLAY                  -> OK RESUME  | ERR PLAY
   STATION <json>        -> (pas de reponse) station de /ui ajoutee a la bibliotheque moOde
   AIRPLAY 1|2           -> OK AIRPLAY n : recepteur AirPlay 1 (vieux appareils) ou 2
+  SVC <nom> 0|1         -> OK SVC ... : coupe / active airplay, spotify ou bluetooth (comme moOde)
   STOP                  -> OK STOP
   PAUSE                 -> OK PAUSE
   VOL <0-100>           -> OK VOL <n> | ERR VOL
@@ -47,6 +48,7 @@ import dlna
 import moode_radio
 import airplay
 import mediainfo_guard
+import services
 
 PORT = "/dev/serial0"
 BAUD = 115200
@@ -636,6 +638,7 @@ def build_status(ip):
     """Ajoute le volume AirPlay (celui de l'appareil source, MPD ne le connait pas)."""
     st = _build_status_ap(ip)
     st["airplay"] = airplay.get_version()      # 1 ou 2, affiche dans la page Settings de l'ESP
+    st["svc"] = services.get()                 # AirPlay / Spotify / Bluetooth actives ou coupes
     st["ip"] = own_ip()                        # adresse du Pi : la page /ui la suit si la box en change
     if st.get("source") == "airplay":
         v = airplay.get_volume()
@@ -898,6 +901,16 @@ class Bridge:
 
         elif cmd == "VOL" and bt_set_volume(arg):    # Bluetooth : volume bluez-alsa
             self.send("OK VOL " + arg)
+
+        elif cmd == "SVC":                     # page Settings de l'ESP : SVC airplay|spotify|bluetooth 0|1
+            p = arg.split()
+            if len(p) == 2 and p[0] in services.SVC and p[1] in ("0", "1"):
+                def run(name=p[0], on=p[1] == "1"):
+                    ok = services.set_service(name, on)
+                    self.send(("OK SVC " if ok else "ERR SVC ") + arg)
+                threading.Thread(target=run, daemon=True).start()
+            else:
+                self.send("ERR SVC")
 
         elif cmd == "AIRPLAY":                 # page Settings de l'ESP : AirPlay 1 ou 2
             if arg in ("1", "2"):

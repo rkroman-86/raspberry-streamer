@@ -628,10 +628,15 @@ const openPages = new Set();
 function refreshOpenPages() { openPages.forEach(fn => fn()); }
 
 /* ---------------- choix de la source ---------------- */
+/** Service coupe dans Settings (AirPlay, Spotify, Bluetooth) : pas de tuile. */
+function svcOn(src) {
+  const sv = (S.st || {}).svc;
+  return !RENDERERS.includes(src) || !sv || sv[src] !== 0;
+}
 function openSources() {
   const p = openPage('Source', { small: true });
   const grid = h('div', 'src-grid');
-  SOURCES.forEach(src => {
+  SOURCES.filter(svcOn).forEach(src => {
     const b = h('button', 'src-tile' + (src === S.src ? ' on' : ''), `<img alt="" src="/ui/f?n=A/src_${src}.png">`);
     b.setAttribute('aria-label', SRC_LABEL[src]);
     b.onclick = async () => {
