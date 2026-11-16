@@ -12,11 +12,15 @@ Usage (from the repo root):
   python tools/pi_sync.py log [-n 80]   # last lines of the espbridge journal
   python tools/pi_sync.py sh "cmd"      # run a shell command on the Pi
 
-Pi address: --host, or env PI_HOST, default rk@192.168.1.35
+Pi address: --host, or env PI_HOST; otherwise asked to the ESP screen (env TASMOTA_HOST,
+default 192.168.1.75), which gets it from the Pi; last resort rk@192.168.1.35.
 """
 import argparse
 import glob
+import json
 import os
+import re
+import urllib.request
 import subprocess
 import sys
 
@@ -71,9 +75,26 @@ def do_pull(host):
     print("pulled into pi/")
 
 
+def esp_says_pi_host():
+    """Adresse du Pi connue de l'ESP (champ ip du STATUS, sinon URL des pochettes)."""
+    esp = os.environ.get("TASMOTA_HOST", "192.168.1.75")
+    try:
+        with urllib.request.urlopen("http://%s/ui/api?a=state" % esp, timeout=4) as r:
+            st = (json.load(r) or {}).get("st") or {}
+    except Exception:
+        return None
+    if st.get("ip"):
+        return "rk@" + st["ip"]
+    for u in (st.get("thumb"), st.get("cover")):
+        m = re.match(r"^https?://([^/:]+)", u or "")
+        if m:
+            return "rk@" + m.group(1)
+    return None
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--host", default=os.environ.get("PI_HOST", "rk@192.168.1.35"))
+    ap.add_argument("--host", default=os.environ.get("PI_HOST"))
     sub = ap.add_subparsers(dest="action", required=True)
     sub.add_parser("push")
     sub.add_parser("pull")
@@ -84,6 +105,9 @@ def main():
     sh = sub.add_parser("sh")
     sh.add_argument("command")
     a = ap.parse_args()
+    if not a.host:
+        a.host = esp_says_pi_host() or "rk@192.168.1.35"
+        print("Pi: %s (from the ESP)" % a.host if a.host != "rk@192.168.1.35" else "Pi: rk@192.168.1.35 (default)")
 
     if a.action == "push":
         do_push(a.host)

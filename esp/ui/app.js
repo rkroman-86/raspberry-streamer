@@ -1161,6 +1161,7 @@ function openModeMenu(anchor, current, onPick) {
 /** Adresse du Pi : hôte des vignettes qu'il produit (STATUS), mémorisée pour la suite. */
 function piHost() {
   const st = S.st || {};
+  if (st.ip) { store.set('pi_host', st.ip); return st.ip; }   // annoncee par le Pi a chaque STATUS
   for (const u of [st.thumb, st.cover]) {
     const m = /^https?:\/\/([^/:]+)(?::\d+)?\/(imagesw?|coverart)/.exec(u || '');
     if (m) { store.set('pi_host', m[1]); return m[1]; }

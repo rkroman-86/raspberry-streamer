@@ -619,12 +619,23 @@ def build_status(ip):
 
 
 _build_status_ap = build_status
+_own_ip = {"ip": "", "t": 0.0}
+
+
+def own_ip():
+    """IPv4 du Pi sur le Wi-Fi (relue au plus toutes les 30 s)."""
+    now = time.monotonic()
+    if now - _own_ip["t"] > 30 or not _own_ip["ip"]:
+        _own_ip["t"] = now
+        _own_ip["ip"] = wifi_state()[1] or ""
+    return _own_ip["ip"]
 
 
 def build_status(ip):
     """Ajoute le volume AirPlay (celui de l'appareil source, MPD ne le connait pas)."""
     st = _build_status_ap(ip)
     st["airplay"] = airplay.get_version()      # 1 ou 2, affiche dans la page Settings de l'ESP
+    st["ip"] = own_ip()                        # adresse du Pi : la page /ui la suit si la box en change
     if st.get("source") == "airplay":
         v = airplay.get_volume()
         if v is not None:
