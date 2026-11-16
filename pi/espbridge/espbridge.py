@@ -46,6 +46,7 @@ import mpdfix
 import dlna
 import moode_radio
 import airplay
+import mediainfo_guard
 
 PORT = "/dev/serial0"
 BAUD = 115200
@@ -928,6 +929,7 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     mpdfix.start()                   # reglages MPD que moOde efface (decodeur mpg123)
     airplay.start(active_renderer)   # AirPlay 1 + volume AirPlay (metadonnees UDP, DACP)
+    mediainfo_guard.ensure()         # moOde : pas de 2e connexion vers le serveur DLNA en lecture
     try:
         dlna.start()                 # serveurs DLNA du reseau : API HTTP pour la page /ui
     except OSError as e:
