@@ -103,6 +103,10 @@ class WebUI
     var pl = ws.pi_link
     self.row("Streamer", pl == nil ? "?" : (pl == "" ? "offline (" + str(ws.pi_ssid) + ")" : pl))
     self.row("Saved", persist.find("wifi_ssid", "-"))
+    var eip = tasmota.wifi().find("ip", "")
+    self.row("ESP IP", eip != "" ? eip : "-")
+    var pip = self.status != nil ? self.status.find("ip", "") : ""
+    self.row("Streamer IP", pip != "" ? pip : "-")
     self.row("Sync", self.STATE_LABEL.find(ws.state, ws.state))
     webserver.content_send("</table>")
     if ws.last_error != nil && ws.state == "fail"

@@ -139,11 +139,14 @@ class SettingsUI
     var w = tasmota.wifi()
     var ip = (w != nil) ? w.find("ip", "") : ""
     var t = "Wi-Fi: " + (ssid != nil ? ssid : "offline") + "\n"
-    t += "IP: " + (ip != "" ? ip : "-") + "\n"
+    t += "ESP IP: " + (ip != "" ? ip : "-") + "\n"
     if ws != nil
       var pl = ws.pi_link
-      t += "Streamer: " + (pl == nil ? "?" : (pl == "" ? "offline" : pl))
+      t += "Streamer: " + (pl == nil ? "?" : (pl == "" ? "offline" : pl)) + "\n"
     end
+    var wu = global.webui
+    var pip = (wu != nil && wu.status != nil) ? wu.status.find("ip", "") : ""
+    t += "Streamer IP: " + (pip != "" ? pip : "-")
     self.set_text(74, t)
     self.show(self.G_SET, true)
   end
