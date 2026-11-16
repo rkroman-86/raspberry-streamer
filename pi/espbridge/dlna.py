@@ -447,11 +447,19 @@ def resume():
         rel = getattr(main, "release_renderer", None)
         if rel:
             rel()
+        stopped = m.get("state") == "stop"
         mpd = Mpd()
         try:
             mpd.cmd("play")
         finally:
             mpd.close()
+        el = last.get("elapsed", 0) if last and f == last.get("url") else 0
+        if stopped and el > 5:                  # pause longue passee en stop : meme position
+            try:
+                time.sleep(0.8)
+                seek(el)
+            except Exception as e:
+                log.info("dlna : reprise sans position (%s)", e)
         return {"ok": True, "resumed": "queue"}
     if not last:
         raise LookupError("no previous DLNA playback")

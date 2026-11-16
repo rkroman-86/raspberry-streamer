@@ -652,7 +652,7 @@ def build_status(ip):
     m = mpd_query("status") or {}
     if "repeat" in m:
         st["mode"] = dlna.mode_from(m.get("repeat") == "1", m.get("random") == "1", m.get("single") == "1")
-    if st.get("source") == "dlna":
+    if st.get("source") == "dlna" and st.get("state") in ("play", "pause"):   # stop : garder la position
         dlna.note_playing(st.get("file", ""), st.get("elapsed", 0))
         if not st.get("duration"):
             st["duration"] = dlna.duration_for(st.get("file", ""))
