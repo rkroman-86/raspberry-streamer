@@ -344,6 +344,18 @@ def set_mode(mode):
 
 
 def play(udn, container, item_id, path=None, sname=""):
+    """Joue le dossier a partir du morceau ; MPD bloque (flux precedent) : redemarre puis reessaie."""
+    try:
+        return _play(udn, container, item_id, path, sname)
+    except (OSError, RuntimeError) as e:
+        import mpdfix
+        log.info("dlna : MPD ne repond pas (%s), nouvel essai", e)
+        if not mpdfix.unblock():
+            raise
+        return _play(udn, container, item_id, path, sname)
+
+
+def _play(udn, container, item_id, path=None, sname=""):
     tracks = tracks_of(udn, container)
     if not tracks:
         raise LookupError("no playable track in this folder")

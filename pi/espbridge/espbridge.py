@@ -91,10 +91,10 @@ def wifi_state():
     return None, None
 
 
-def mpc(*args):
+def mpc(*args, timeout=10):
     """Exécute mpc ; renvoie la sortie, ou None en cas d'échec."""
     try:
-        r = subprocess.run(["mpc", *args], capture_output=True, text=True, timeout=10)
+        r = subprocess.run(["mpc", *args], capture_output=True, text=True, timeout=timeout)
     except (subprocess.SubprocessError, FileNotFoundError) as e:
         log.warning("mpc %s : %s", " ".join(args), e)
         return None
@@ -829,10 +829,12 @@ class Bridge:
                 return
             if arg:
                 seq = (["clear"], ["add", arg], ["play"])
-                ok = all(mpc(*a) is not None for a in seq)
+                ok = all(mpc(*a, timeout=6) is not None for a in seq)
                 if not ok:
+                    # MPD peut rester bloque en quittant un flux DLNA en lecture :
+                    # redemarrage immediat de MPD, puis la station est relancee
                     log.info("PLAY : nouvel essai")
-                    time.sleep(0.5)
+                    mpdfix.unblock()
                     ok = all(mpc(*a) is not None for a in seq)
                 self.send("OK PLAY" if ok else "ERR PLAY")
             else:

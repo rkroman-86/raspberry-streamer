@@ -118,6 +118,25 @@ def watch():
         _watch.update(pause_since=None, pause_file=None)
 
 
+def unblock(wait_s=20):
+    """MPD ne repond pas (ex. en quittant un flux DLNA en lecture) : redemarrage
+    immediat, puis attente qu'il reponde. True si MPD repond (avant ou apres)."""
+    if _mpd(["status"], timeout=3) is not None:
+        return True
+    log.warning("mpdfix : MPD bloque sur une commande, redemarrage immediat")
+    _watch.update(ko=0, last_restart=time.monotonic(), pause_since=None)
+    try:
+        subprocess.run(["systemctl", "restart", "mpd"], capture_output=True, timeout=60)
+    except subprocess.SubprocessError as e:
+        log.warning("mpdfix : redemarrage de MPD : %s", e)
+    end = time.monotonic() + wait_s
+    while time.monotonic() < end:
+        if _mpd(["status"], timeout=3) is not None:
+            return True
+        time.sleep(1)
+    return False
+
+
 def _watch_loop():
     while True:
         try:
