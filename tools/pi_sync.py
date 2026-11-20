@@ -30,7 +30,10 @@ SERVICE = os.path.join(REPO, "pi", "systemd", "espbridge.service")
 REMOTE_DIR = "/opt/espbridge"
 REMOTE_SERVICE = "/etc/systemd/system/espbridge.service"
 TMP = "/tmp/espbridge_upload"
-SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
+# HostKeyAlias : la cle du Pi est retenue sous le nom "tasmoode", quelle que soit l'adresse
+# donnee par la box ; accept-new : premiere connexion acceptee, cle CHANGEE toujours refusee
+SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
+            "-o", "HostKeyAlias=tasmoode", "-o", "StrictHostKeyChecking=accept-new"]
 
 
 def run(args, check=True):
