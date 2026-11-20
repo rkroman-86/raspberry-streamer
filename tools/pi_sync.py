@@ -102,6 +102,7 @@ def main():
     sub.add_parser("status")
     lg = sub.add_parser("log")
     lg.add_argument("-n", type=int, default=80)
+    sub.add_parser("guard")              # journal conserve + chien de garde (pi/setup_guard.sh)
     sh = sub.add_parser("sh")
     sh.add_argument("command")
     a = ap.parse_args()
@@ -119,6 +120,10 @@ def main():
         ssh(a.host, "systemctl status espbridge --no-pager -l", check=False)
     elif a.action == "log":
         ssh(a.host, "sudo journalctl -u espbridge -n %d --no-pager -o short-iso" % a.n, check=False)
+    elif a.action == "guard":
+        script = os.path.join(os.path.dirname(SRC_DIR), "setup_guard.sh")
+        run(["scp"] + SSH_OPTS + [script, "%s:/tmp/setup_guard.sh" % a.host])
+        ssh(a.host, "sed -i 's/\\r$//' /tmp/setup_guard.sh && sudo sh /tmp/setup_guard.sh", check=False)
     elif a.action == "sh":
         sys.exit(ssh(a.host, a.command, check=False))
 
