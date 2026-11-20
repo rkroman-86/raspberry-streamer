@@ -7,6 +7,7 @@ mkdir -p /var/log/journal /etc/systemd/journald.conf.d /etc/systemd/system.conf.
 printf '[Journal]\nStorage=persistent\nSystemMaxUse=50M\n' > /etc/systemd/journald.conf.d/espbridge.conf
 printf '[Manager]\nRuntimeWatchdogSec=15\nRebootWatchdogSec=2min\n' > /etc/systemd/system.conf.d/espbridge-watchdog.conf
 systemctl restart systemd-journald
+journalctl --flush
 systemctl daemon-reexec
 echo "journal: $(journalctl --header 2>/dev/null | grep -m1 'File path' || echo ok)"
 echo "watchdog: $(systemctl show -p RuntimeWatchdogUSec)"
