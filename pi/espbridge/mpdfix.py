@@ -137,12 +137,52 @@ def unblock(wait_s=20):
     return False
 
 
+HEALTH_S = 600              # memoire et charge dans le journal toutes les 10 min
+_health = {"at": -1e9}
+
+
+def health():
+    """Une ligne de sante dans le journal : memoire libre, swap, charge, memoire et
+    threads du pont, plus gros processus. Sert a voir venir un blocage du Pi."""
+    def meminfo():
+        d = {}
+        with open("/proc/meminfo") as f:
+            for line in f:
+                k, v = line.split(":", 1)
+                d[k] = int(v.split()[0]) // 1024
+        return d
+    m = meminfo()
+    with open("/proc/loadavg") as f:
+        load = f.read().split()[0]
+    rss = thr = 0
+    with open("/proc/self/status") as f:
+        for line in f:
+            if line.startswith("VmRSS:"):
+                rss = int(line.split()[1]) // 1024
+            elif line.startswith("Threads:"):
+                thr = int(line.split()[1])
+    try:
+        top = subprocess.run(["ps", "-eo", "rss=,comm=", "--sort=-rss"], capture_output=True,
+                             text=True, timeout=5).stdout.split("\n")[:3]
+        top = ", ".join("%s %dM" % (t.split()[1], int(t.split()[0]) // 1024) for t in top if t.strip())
+    except Exception:
+        top = "?"
+    log.info("sante : dispo %dM, swap %dM utilise, charge %s, pont %dM %d threads | %s",
+             m.get("MemAvailable", 0), m.get("SwapTotal", 0) - m.get("SwapFree", 0), load, rss, thr, top)
+
+
 def _watch_loop():
     while True:
         try:
             watch()
         except Exception:
             log.exception("mpdfix watch")
+        if time.monotonic() - _health["at"] >= HEALTH_S:
+            _health["at"] = time.monotonic()
+            try:
+                health()
+            except Exception as e:
+                log.info("sante : %s", e)
         time.sleep(WATCH_S)
 
 
